@@ -1,0 +1,25 @@
+{
+  "name": "zabtem",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "generate:template": "tsx scripts/generate-template.ts",
+    "validate:template": "tsx scripts/validate-template.ts",
+    "build": "tsx scripts/build-skeleton.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.10",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "eslint": "^9.18.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "yaml": "^2.7.0"
+  }
+}
