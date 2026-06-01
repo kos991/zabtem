@@ -1,5 +1,10 @@
 .corepack/
 .pnpm-store/
+.claude/
+.codegraph/
 coverage/
 dist/
 node_modules/
+_tmp_*
+render_ui_preview.py
+ui-preview.*
