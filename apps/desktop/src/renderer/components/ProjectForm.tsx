@@ -16,67 +16,69 @@ export function ProjectForm(props: {
   }
 
   return (
-    <form className="panel form-panel" onSubmit={(event) => void handleSubmit(event)}>
+    <section className="panel editor-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Create</p>
-          <h2>New project</h2>
+          <p className="eyebrow">Project</p>
+          <h2>Create a new project</h2>
         </div>
         <button type="button" className="ghost-button" onClick={props.onCancel}>
-          Cancel
+          {'\u8fd4\u56de'}
         </button>
       </div>
 
-      <div className="form-grid">
-        <label>
-          <span>Project name</span>
-          <input
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Core switch template"
-          />
-        </label>
+      <form className="editor-form" onSubmit={(event) => void handleSubmit(event)}>
+        <div className="form-grid">
+          <label>
+            <span>Project name</span>
+            <input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Core switch template"
+            />
+          </label>
 
-        <label>
-          <span>Vendor</span>
-          <input
-            required
-            value={vendor}
-            onChange={(event) => setVendor(event.target.value)}
-            placeholder="H3C / Huawei / Ruijie"
-          />
-        </label>
+          <label>
+            <span>Vendor</span>
+            <input
+              required
+              value={vendor}
+              onChange={(event) => setVendor(event.target.value)}
+              placeholder="H3C / Huawei / Ruijie"
+            />
+          </label>
 
-        <label>
-          <span>Model</span>
-          <input
-            required
-            value={model}
-            onChange={(event) => setModel(event.target.value)}
-            placeholder="S6520X / S5735 / RG-S5750C"
-          />
-        </label>
+          <label>
+            <span>Model</span>
+            <input
+              required
+              value={model}
+              onChange={(event) => setModel(event.target.value)}
+              placeholder="S6520X / S5735 / RG-S5750C"
+            />
+          </label>
 
-        <label>
-          <span>Role</span>
-          <select
-            value={role}
-            onChange={(event) => setRole(event.target.value as CreateProjectInput['role'])}
-          >
-            <option value="core">Core</option>
-            <option value="aggregation">Aggregation</option>
-            <option value="access">Access</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-      </div>
+          <label>
+            <span>Role</span>
+            <select
+              value={role}
+              onChange={(event) => setRole(event.target.value as CreateProjectInput['role'])}
+            >
+              <option value="core">Core</option>
+              <option value="aggregation">Aggregation</option>
+              <option value="access">Access</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+        </div>
 
-      <div className="form-actions">
-        <button type="submit" className="primary-button">
-          Create project
-        </button>
-      </div>
-    </form>
+        <div className="form-actions">
+          <button type="submit" className="primary-button">
+            Create project
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }

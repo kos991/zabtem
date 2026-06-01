@@ -83,7 +83,7 @@ export function SnmpProfileForm(props: {
   }
 
   return (
-    <section className="panel form-panel">
+    <section className="panel editor-panel">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">SNMP</p>
@@ -171,7 +171,9 @@ export function SnmpProfileForm(props: {
             <span>Version</span>
             <select
               value={form.version}
-              onChange={(event) => patch('version', event.target.value as SaveSnmpProfileInput['version'])}
+              onChange={(event) =>
+                patch('version', event.target.value as SaveSnmpProfileInput['version'])
+              }
             >
               <option value="v2c">SNMP v2c</option>
               <option value="v3">SNMP v3</option>

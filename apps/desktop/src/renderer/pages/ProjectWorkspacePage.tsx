@@ -11,23 +11,19 @@ export function ProjectWorkspacePage(props: {
   onDeleteProfile(profileId: string): Promise<void>;
 }): ReactElement {
   return (
-    <div className="workspace-layout">
-      <section className="panel project-summary">
+    <div className="workspace-grid">
+      <section className="panel project-summary-panel">
         <div className="panel-heading">
           <div>
             <p className="eyebrow">Workspace</p>
-            <h2>Project workspace</h2>
+            <h2>{props.project.name}</h2>
           </div>
           <button type="button" className="ghost-button" onClick={props.onBack}>
-            Back to projects
+            {'\u8fd4\u56de\u9879\u76ee'}
           </button>
         </div>
 
         <dl className="summary-grid">
-          <div>
-            <dt>Name</dt>
-            <dd>{props.project.name}</dd>
-          </div>
           <div>
             <dt>Vendor</dt>
             <dd>{props.project.vendor}</dd>
@@ -41,11 +37,7 @@ export function ProjectWorkspacePage(props: {
             <dd>{props.project.role}</dd>
           </div>
           <div>
-            <dt>Device type</dt>
-            <dd>{props.project.deviceType}</dd>
-          </div>
-          <div>
-            <dt>Zabbix target</dt>
+            <dt>Zabbix</dt>
             <dd>{props.project.zabbixVersion}</dd>
           </div>
         </dl>

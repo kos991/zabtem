@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import type { ProjectRecord } from '../../shared/types/project';
+import { RecentProjectList } from '../components/RecentProjectList';
 
 export function ProjectListPage(props: {
   projects: ProjectRecord[];
@@ -7,35 +8,30 @@ export function ProjectListPage(props: {
   onOpen(project: ProjectRecord): void;
 }): ReactElement {
   return (
-    <section className="panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Projects</p>
-          <h2>Switch template workspaces</h2>
+    <section className="start-page-grid">
+      <section className="panel start-hero">
+        <p className="eyebrow">Recent projects</p>
+        <h2>Resume the latest template workspace</h2>
+        <p>
+          Start from an existing switch project or create a new one before moving into SNMP
+          collection, MIB loading, and template generation.
+        </p>
+        <div className="start-actions">
+          <button type="button" className="primary-button" onClick={props.onCreate}>
+            {'\u65b0\u5efa\u9879\u76ee'}
+          </button>
         </div>
-        <button type="button" className="primary-button" onClick={props.onCreate}>
-          New project
-        </button>
-      </div>
+      </section>
 
-      {props.projects.length === 0 ? (
-        <div className="empty-state">
-          <strong>No projects yet</strong>
-          <p>Create the first switch workspace to store vendor, model, and SNMP profile data.</p>
+      <section className="panel recent-projects-panel">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Projects</p>
+            <h2>Recent projects</h2>
+          </div>
         </div>
-      ) : (
-        <ul className="project-list">
-          {props.projects.map((project) => (
-            <li key={project.id}>
-              <button type="button" className="project-card" onClick={() => props.onOpen(project)}>
-                <strong>{project.name}</strong>
-                <span>{project.vendor} {project.model}</span>
-                <small>Role: {project.role} · Zabbix {project.zabbixVersion}</small>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+        <RecentProjectList projects={props.projects} onOpen={props.onOpen} />
+      </section>
     </section>
   );
 }
