@@ -32,9 +32,10 @@ describe('App shell', () => {
     render(<App />);
 
     await screen.findByRole('heading', { level: 1, name: 'Recent projects' });
-    await user.click(screen.getByRole('button', { name: snmpCollectionLabel }));
+    const stepButton = screen.getByRole('button', { name: snmpCollectionLabel });
+    await user.click(stepButton);
 
-    expect(screen.getByRole('heading', { name: snmpCollectionLabel })).not.toBeNull();
+    expect(stepButton.className.includes('active')).toBe(true);
     expect(screen.getByText('This workflow step is not wired yet.')).not.toBeNull();
   });
 });
