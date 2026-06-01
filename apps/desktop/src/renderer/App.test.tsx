@@ -34,7 +34,7 @@ describe('App shell', () => {
     await screen.findByText('Recent projects');
     await user.click(screen.getByRole('button', { name: snmpCollectionLabel }));
 
-    expect(screen.getByText(snmpCollectionLabel)).toBeInTheDocument();
-    expect(screen.getByText('This workflow step is not wired yet.')).toBeInTheDocument();
+    expect(screen.getByText(snmpCollectionLabel)).not.toBeNull();
+    expect(screen.getByText('This workflow step is not wired yet.')).not.toBeNull();
   });
 });
