@@ -42,3 +42,16 @@ export interface SaveSnmpProfileInput {
   retries: number;
   bulkSize: number;
 }
+
+export interface SnmpConnectionTestInput {
+  profileId: string;
+}
+
+export interface SnmpConnectionTestResult {
+  ok: boolean;
+  profileId: string;
+  target: string;
+  sysDescr: string;
+  checkedAt: string;
+  error?: string;
+}

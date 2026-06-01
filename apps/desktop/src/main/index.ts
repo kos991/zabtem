@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerProjectIpc } from './ipc/project-ipc';
+import { registerSnmpCollectionIpc } from './ipc/snmp-collection-ipc';
 import { registerSnmpProfileIpc } from './ipc/snmp-profile-ipc';
 import { createDesktopDatabase } from './storage/database';
 
@@ -35,6 +36,7 @@ app.whenReady().then(async () => {
 
   registerProjectIpc(database);
   registerSnmpProfileIpc(database, safeStorage);
+  registerSnmpCollectionIpc(database, safeStorage);
   await createWindow();
 
   app.on('activate', () => {

@@ -3,7 +3,12 @@ import type {
   ProjectRecord,
   UpdateProjectInput
 } from './types/project';
-import type { SaveSnmpProfileInput, SnmpProfileRecord } from './types/snmp';
+import type {
+  SaveSnmpProfileInput,
+  SnmpConnectionTestInput,
+  SnmpConnectionTestResult,
+  SnmpProfileRecord
+} from './types/snmp';
 
 export interface ZabtemPreloadApi {
   app: {
@@ -19,6 +24,9 @@ export interface ZabtemPreloadApi {
     list(projectId: string): Promise<SnmpProfileRecord[]>;
     save(input: SaveSnmpProfileInput): Promise<SnmpProfileRecord>;
     remove(profileId: string): Promise<void>;
+  };
+  snmpCollection: {
+    testConnection(input: SnmpConnectionTestInput): Promise<SnmpConnectionTestResult>;
   };
 }
 

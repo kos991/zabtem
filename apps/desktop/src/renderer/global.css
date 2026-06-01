@@ -367,7 +367,8 @@ dd {
 
 .recent-project-main span,
 .recent-project-meta small,
-.recent-projects-empty p {
+.recent-projects-empty p,
+.muted-text {
   color: #5b6f83;
 }
 
@@ -513,6 +514,29 @@ dd {
   max-width: 48ch;
   color: #4f6174;
   line-height: 1.65;
+}
+
+.collection-result {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid #d7e5f0;
+  border-radius: 16px;
+  background: #f7fbff;
+}
+
+.collection-result p {
+  margin-top: 8px;
+  color: #4f6174;
+}
+
+.collection-result.success {
+  border-color: #a8e8c3;
+  background: #edfdf4;
+}
+
+.collection-result.error {
+  border-color: #fecdd3;
+  background: #fff1f2;
 }
 
 @media (max-width: 1360px) {

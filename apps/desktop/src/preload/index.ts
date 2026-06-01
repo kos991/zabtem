@@ -15,6 +15,9 @@ const api: ZabtemPreloadApi = {
     list: (projectId) => ipcRenderer.invoke('snmp-profiles:list', projectId),
     save: (input) => ipcRenderer.invoke('snmp-profiles:save', input),
     remove: (profileId) => ipcRenderer.invoke('snmp-profiles:remove', profileId)
+  },
+  snmpCollection: {
+    testConnection: (input) => ipcRenderer.invoke('snmp-collection:test-connection', input)
   }
 };
 

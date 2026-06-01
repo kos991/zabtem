@@ -13,9 +13,9 @@
     "@vitejs/plugin-react": "latest",
     "better-sqlite3": "latest",
     "electron": "latest",
+    "net-snmp": "^3.26.3",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
-  },
-  "devDependencies": {}
+  }
 }

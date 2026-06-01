@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import type { CreateProjectInput, ProjectRecord } from '../shared/types/project';
-import type { SaveSnmpProfileInput } from '../shared/types/snmp';
+import type { SaveSnmpProfileInput, SnmpConnectionTestResult } from '../shared/types/snmp';
 import { AppShell } from './components/AppShell';
 import { ProjectForm } from './components/ProjectForm';
 import { ProjectListPage } from './pages/ProjectListPage';
 import { ProjectWorkspacePage } from './pages/ProjectWorkspacePage';
+import { SnmpCollectionPage } from './pages/SnmpCollectionPage';
 import { StepPlaceholderPage } from './pages/StepPlaceholderPage';
 import type { AppView, ContextTab, WorkflowStep } from './state/app-state';
 
@@ -71,6 +72,10 @@ export function App(): ReactElement {
     await openWorkspace(view.project, view.step, view.activeContextTab);
   }
 
+  async function testSnmpConnection(profileId: string): Promise<SnmpConnectionTestResult> {
+    return window.zabtem.snmpCollection.testConnection({ profileId });
+  }
+
   function changeContextTab(tab: ContextTab): void {
     setView((current) => ({ ...current, activeContextTab: tab }));
   }
@@ -126,6 +131,15 @@ export function App(): ReactElement {
           onBack={() => setView(createRecentProjectsView())}
           onSaveProfile={saveProfile}
           onDeleteProfile={deleteProfile}
+        />
+      );
+    }
+
+    if (view.kind === 'workspace' && view.step === 'snmp-collection') {
+      return (
+        <SnmpCollectionPage
+          profiles={view.profiles}
+          onTestConnection={testSnmpConnection}
         />
       );
     }
@@ -242,6 +256,10 @@ function viewDescription(view: AppView): string {
 
   if (view.kind === 'workspace' && view.step === 'projects') {
     return 'Manage project metadata and SNMP profiles before moving into the downstream workflow.';
+  }
+
+  if (view.kind === 'workspace' && view.step === 'snmp-collection') {
+    return 'Test saved SNMP profiles against the target device before running full walk collection.';
   }
 
   return 'This step is reachable now so the full product flow can be navigated before implementation.';
