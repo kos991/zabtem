@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "dist/main",
-    "rootDir": "src/main"
+    "rootDir": "src"
   },
-  "include": ["src/main/**/*.ts"]
+  "include": ["src/main/**/*.ts", "src/shared/**/*.ts"]
 }

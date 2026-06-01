@@ -1,6 +1,9 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { registerProjectIpc } from './ipc/project-ipc';
+import { registerSnmpProfileIpc } from './ipc/snmp-profile-ipc';
+import { createDesktopDatabase } from './storage/database';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -15,7 +18,7 @@ async function createWindow(): Promise<void> {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: join(currentDir, '..', 'preload', 'index.js')
+      preload: join(currentDir, '..', '..', 'preload', 'preload', 'index.js')
     }
   });
 
@@ -24,10 +27,14 @@ async function createWindow(): Promise<void> {
     return;
   }
 
-  await window.loadFile(join(currentDir, '..', 'renderer', 'index.html'));
+  await window.loadFile(join(currentDir, '..', '..', 'renderer', 'index.html'));
 }
 
 app.whenReady().then(async () => {
+  const database = createDesktopDatabase({ userDataPath: app.getPath('userData') });
+
+  registerProjectIpc(database);
+  registerSnmpProfileIpc(database, safeStorage);
   await createWindow();
 
   app.on('activate', () => {
