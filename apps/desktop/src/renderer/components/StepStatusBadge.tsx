@@ -4,5 +4,9 @@ export function StepStatusBadge(props: {
   tone: 'idle' | 'active' | 'pending';
   children: string;
 }): ReactElement {
-  return <span className={`step-status step-status-${props.tone}`}>{props.children}</span>;
+  return (
+    <span aria-hidden="true" className={`step-status step-status-${props.tone}`}>
+      {props.children}
+    </span>
+  );
 }
