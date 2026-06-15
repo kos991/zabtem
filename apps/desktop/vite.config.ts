@@ -7,7 +7,7 @@ export default defineConfig({
   root: __dirname,
   base: './',
   build: {
-    outDir: 'dist/renderer',
+    outDir: 'dist/web',
     emptyOutDir: true,
     rollupOptions: {
       input: resolve(__dirname, 'index.html')
@@ -16,6 +16,12 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:18080',
+        changeOrigin: true
+      }
+    }
   }
 });

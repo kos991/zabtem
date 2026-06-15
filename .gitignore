@@ -5,6 +5,12 @@
 coverage/
 dist/
 node_modules/
+target/
+target-gnu/
+.tmp/
 _tmp_*
+*.sqlite
+*.sqlite-*
+blank.pen
 render_ui_preview.py
 ui-preview.*

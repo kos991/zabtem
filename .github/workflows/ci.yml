@@ -1,0 +1,182 @@
+name: ci
+
+on:
+  push:
+    branches: [main, codex/*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: Goal to run
+        required: true
+        default: full
+        type: choice
+        options:
+          - verify
+          - generate-template
+          - build
+          - full
+
+jobs:
+  # ── Frontend check (fast, no Rust) ─────────────────────────────────
+  frontend:
+    name: Frontend (lint / typecheck / test)
+    if: ${{ !inputs.goal || inputs.goal == 'verify' || inputs.goal == 'full' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  # ── Rust server tests ──────────────────────────────────────────────
+  rust-server:
+    name: Rust server tests
+    if: ${{ !inputs.goal || inputs.goal == 'verify' || inputs.goal == 'full' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p zabtem-server
+      - run: cargo check -p zabtem-server
+
+  # ── Rust Tauri shell compilation check ─────────────────────────────
+  rust-tauri:
+    name: Tauri shell (check)
+    if: ${{ !inputs.goal || inputs.goal == 'verify' || inputs.goal == 'full' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux system deps (Tauri)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf libgtk-3-dev libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev
+      - run: cargo check -p zabtem-tauri
+
+  # ── Template generation & validation ───────────────────────────────
+  generate-template:
+    name: Generate Zabbix template
+    if: ${{ inputs.goal == 'generate-template' || inputs.goal == 'full' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm generate:template
+      - run: pnpm validate:template
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sample-zabbix-template
+          path: dist/templates/sample-template.yaml
+          if-no-files-found: error
+
+  # ── Frontend build (skeleton artifact) ─────────────────────────────
+  build:
+    name: Build frontend
+    if: ${{ inputs.goal == 'build' || inputs.goal == 'full' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows-x86_64
+          - os: ubuntu-latest
+            target: linux-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}-skeleton
+          path: dist/desktop/*
+          if-no-files-found: error
+
+  # ── Tauri production bundle ────────────────────────────────────────
+  tauri-build:
+    name: Tauri production bundle
+    if: ${{ inputs.goal == 'build' || inputs.goal == 'full' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+          - os: windows-latest
+            target: windows-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux system deps (Tauri)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf libgtk-3-dev libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tauri:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zabtem-desktop-${{ matrix.target }}
+          path: apps/desktop/src-tauri/target/release/bundle/**/*
+          if-no-files-found: error
+
+  # ── ARM64 experimental (reserved) ──────────────────────────────────
+  arm64-experimental:
+    if: ${{ false }}
+    continue-on-error: true
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - run: echo "ARM64 is reserved for manual experimental validation after x86_64 verify/build is stable."
