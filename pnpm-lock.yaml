@@ -14,9 +14,6 @@ importers:
       '@testing-library/user-event':
         specifier: latest
         version: 14.6.1(@testing-library/dom@10.4.1)
-      '@types/better-sqlite3':
-        specifier: latest
-        version: 7.6.13
       '@types/node':
         specifier: ^22.10.10
         version: 22.19.19
@@ -38,18 +35,12 @@ importers:
       jsdom:
         specifier: latest
         version: 29.1.1
-      tsx:
-        specifier: ^4.19.2
-        version: 4.22.3
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.19)(jsdom@29.1.1)(lightningcss@1.32.0)
-      yaml:
-        specifier: ^2.7.0
-        version: 2.9.0
 
   apps/desktop:
     dependencies:
@@ -81,8 +72,6 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2
         version: 2.11.2
-
-  packages/core: {}
 
 packages:
 
@@ -866,9 +855,6 @@ packages:
 
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
-
-  '@types/better-sqlite3@7.6.13':
-    resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -2383,10 +2369,6 @@ snapshots:
 
   '@types/aria-query@5.0.4': {}
 
-  '@types/better-sqlite3@7.6.13':
-    dependencies:
-      '@types/node': 22.19.19
-
   '@types/estree@1.0.8': {}
 
   '@types/estree@1.0.9': {}
@@ -2726,6 +2708,7 @@ snapshots:
       '@esbuild/win32-arm64': 0.28.0
       '@esbuild/win32-ia32': 0.28.0
       '@esbuild/win32-x64': 0.28.0
+    optional: true
 
   escape-string-regexp@4.0.0: {}
 
@@ -3272,6 +3255,7 @@ snapshots:
       esbuild: 0.28.0
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   type-check@0.4.0:
     dependencies:
@@ -3401,6 +3385,7 @@ snapshots:
 
   xmlchars@2.2.0: {}
 
-  yaml@2.9.0: {}
+  yaml@2.9.0:
+    optional: true
 
   yocto-queue@0.1.0: {}
