@@ -2,28 +2,33 @@
   "name": "zabtem",
   "version": "0.0.0",
   "private": true,
+  "license": "GPL-3.0-only",
   "type": "module",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json --noEmit && corepack pnpm --filter @zabtem/desktop typecheck",
-    "test": "vitest run",
-    "generate:template": "tsx scripts/generate-template.ts",
-    "validate:template": "tsx scripts/validate-template.ts",
-    "build": "tsx scripts/build-skeleton.ts && corepack pnpm --filter @zabtem/desktop build",
-    "desktop:dev": "corepack pnpm --filter @zabtem/desktop dev",
-    "desktop:build": "corepack pnpm --filter @zabtem/desktop build"
+    "typecheck": "tsc -p tsconfig.json --noEmit && corepack pnpm --filter @zabtem/web typecheck",
+    "test": "vitest run --passWithNoTests",
+    "build": "corepack pnpm --filter @zabtem/web build",
+    "server:dev": "cargo run -p zabtem-server",
+    "server:test": "cargo test -p zabtem-server",
+    "server:check": "cargo check -p zabtem-server",
+    "web:dev": "corepack pnpm --filter @zabtem/web dev",
+    "web:build": "corepack pnpm --filter @zabtem/web build",
+    "tauri:dev": "corepack pnpm --filter @zabtem/web tauri dev",
+    "tauri:build": "corepack pnpm --filter @zabtem/web tauri build"
   },
   "devDependencies": {
+    "@testing-library/react": "latest",
+    "@testing-library/user-event": "latest",
     "@types/node": "^22.10.10",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@typescript-eslint/eslint-plugin": "^8.20.0",
     "@typescript-eslint/parser": "^8.20.0",
     "eslint": "^9.18.0",
-    "tsx": "^4.19.2",
+    "jsdom": "latest",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8",
-    "yaml": "^2.7.0"
+    "vitest": "^2.1.8"
   }
 }
