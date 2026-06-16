@@ -334,6 +334,47 @@ select {
   justify-self: start;
 }
 
+.pipeline-actions,
+.pipeline-result {
+  display: flex;
+  grid-column: 2;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pipeline-result {
+  padding: 10px 12px;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.pipeline-result strong {
+  color: #142033;
+  font-size: 14px;
+}
+
+.pipeline-result span {
+  color: #65758b;
+  font-size: 12px;
+}
+
+.template-preview {
+  grid-column: 2;
+  max-height: 280px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  background: #101827;
+  color: #e7eef8;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .task-list {
   display: grid;
   border: 1px solid #dfe6ee;
@@ -496,5 +537,11 @@ select {
 
   .snmp-result-success {
     grid-template-columns: 1fr;
+  }
+
+  .pipeline-actions,
+  .pipeline-result,
+  .template-preview {
+    grid-column: 1;
   }
 }

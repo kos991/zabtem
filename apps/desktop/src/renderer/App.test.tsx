@@ -30,6 +30,44 @@ describe('App workbench', () => {
         };
       }
 
+      if (String(input) === '/api/snmp/walk') {
+        return {
+          ok: true,
+          json: async () => ({
+            target: '192.168.1.10',
+            version: 'v2c',
+            items: [
+              { oid: '1.3.6.1.2.1.1.1.0', name: 'sysDescr', value: 'Linux', valueType: 'text' },
+              { oid: '1.3.6.1.2.1.1.3.0', name: 'sysUpTime', value: '8640000', valueType: 'timeticks' },
+              { oid: '1.3.6.1.2.1.2.2.1.10.1', name: 'ifInOctets', value: '42', valueType: 'counter' },
+              { oid: '1.3.6.1.2.1.25.2.3.1.6.1', name: 'hrStorageUsed', value: '100', valueType: 'gauge' }
+            ]
+          })
+        };
+      }
+
+      if (String(input) === '/api/template/classify') {
+        return {
+          ok: true,
+          json: async () => ({
+            items: [
+              { oid: '1.3.6.1.2.1.1.1.0', name: 'sysDescr', group: 'system', zabbixType: 'SNMP_AGENT', valueType: 'text' },
+              { oid: '1.3.6.1.2.1.2.2.1.10.1', name: 'ifInOctets', group: 'interfaces', zabbixType: 'SNMP_AGENT', valueType: 'counter' },
+              { oid: '1.3.6.1.2.1.25.2.3.1.6.1', name: 'hrStorageUsed', group: 'storage', zabbixType: 'SNMP_AGENT', valueType: 'gauge' }
+            ]
+          })
+        };
+      }
+
+      if (String(input) === '/api/template/preview') {
+        return {
+          ok: true,
+          json: async () => ({
+            yaml: 'zabbix_export:\n  version: "7.0"\n  templates:\n    - template: Template Zabtem Simulated SNMP\n'
+          })
+        };
+      }
+
       throw new Error(`Unexpected fetch: ${String(input)}`);
     });
 
@@ -73,6 +111,31 @@ describe('App workbench', () => {
         version: 'v2c',
         community: 'public'
       })
+    });
+  });
+
+  test('runs walk, classification, and yaml preview after the connection test', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByTestId('run-snmp-test'));
+    await userEvent.click(await screen.findByTestId('run-snmp-walk'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('snmp-walk-result').textContent).toContain('4 OIDs');
+    });
+
+    await userEvent.click(screen.getByTestId('run-oid-classify'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('oid-classify-result').textContent).toContain('interfaces');
+      expect(screen.getByTestId('oid-classify-result').textContent).toContain('storage');
+    });
+
+    await userEvent.click(screen.getByTestId('run-template-preview'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-preview').textContent).toContain('zabbix_export');
+      expect(screen.getByTestId('template-preview').textContent).toContain('Template Zabtem Simulated SNMP');
     });
   });
 });

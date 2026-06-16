@@ -20,10 +20,16 @@ import {
   TerminalIcon
 } from 'tdesign-icons-react';
 import {
+  classifyWalkItems,
   getHealth,
+  previewTemplate,
   testSnmpProfile,
+  walkSnmpProfile,
+  type ClassifyPayload,
   type HealthPayload,
-  type SnmpTestPayload
+  type SnmpTestPayload,
+  type SnmpWalkPayload,
+  type TemplatePreviewPayload
 } from './api';
 
 type HealthState =
@@ -35,6 +41,12 @@ type SnmpTestState =
   | { status: 'idle' }
   | { status: 'running' }
   | { status: 'success'; payload: SnmpTestPayload }
+  | { status: 'error'; message: string };
+
+type AsyncState<T> =
+  | { status: 'idle' }
+  | { status: 'running' }
+  | { status: 'success'; payload: T }
   | { status: 'error'; message: string };
 
 const { Header, Content, Aside } = Layout;
@@ -91,6 +103,9 @@ export function App() {
     message: '正在检查 API'
   });
   const [snmpTest, setSnmpTest] = useState<SnmpTestState>({ status: 'idle' });
+  const [walk, setWalk] = useState<AsyncState<SnmpWalkPayload>>({ status: 'idle' });
+  const [classification, setClassification] = useState<AsyncState<ClassifyPayload>>({ status: 'idle' });
+  const [templatePreview, setTemplatePreview] = useState<AsyncState<TemplatePreviewPayload>>({ status: 'idle' });
 
   useEffect(() => {
     let alive = true;
@@ -124,6 +139,9 @@ export function App() {
 
   async function runSnmpTest() {
     setSnmpTest({ status: 'running' });
+    setWalk({ status: 'idle' });
+    setClassification({ status: 'idle' });
+    setTemplatePreview({ status: 'idle' });
 
     try {
       const payload = await testSnmpProfile({
@@ -136,6 +154,59 @@ export function App() {
       setSnmpTest({
         status: 'error',
         message: error instanceof Error ? error.message : 'SNMP 连接测试失败'
+      });
+    }
+  }
+
+  async function runSnmpWalk() {
+    setWalk({ status: 'running' });
+    setClassification({ status: 'idle' });
+    setTemplatePreview({ status: 'idle' });
+
+    try {
+      const payload = await walkSnmpProfile({
+        target: '192.168.1.10',
+        version: 'v2c',
+        community: 'public'
+      });
+      setWalk({ status: 'success', payload });
+    } catch (error) {
+      setWalk({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'SNMP walk 失败'
+      });
+    }
+  }
+
+  async function runOidClassify() {
+    if (walk.status !== 'success') return;
+
+    setClassification({ status: 'running' });
+    setTemplatePreview({ status: 'idle' });
+
+    try {
+      const payload = await classifyWalkItems(walk.payload.items);
+      setClassification({ status: 'success', payload });
+    } catch (error) {
+      setClassification({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'OID 归类失败'
+      });
+    }
+  }
+
+  async function runTemplatePreview() {
+    if (classification.status !== 'success') return;
+
+    setTemplatePreview({ status: 'running' });
+
+    try {
+      const payload = await previewTemplate(classification.payload.items);
+      setTemplatePreview({ status: 'success', payload });
+    } catch (error) {
+      setTemplatePreview({
+        status: 'error',
+        message: error instanceof Error ? error.message : '模板预览失败'
       });
     }
   }
@@ -266,6 +337,74 @@ export function App() {
                           {snmpTest.payload.message}
                         </Tag>
                       </div>
+                    ) : null}
+                    <div className="pipeline-actions">
+                      <Button
+                        data-testid="run-snmp-walk"
+                        variant="outline"
+                        disabled={snmpTest.status !== 'success' || walk.status === 'running'}
+                        loading={walk.status === 'running'}
+                        onClick={() => void runSnmpWalk()}
+                      >
+                        采集 walk
+                      </Button>
+                      <Button
+                        data-testid="run-oid-classify"
+                        variant="outline"
+                        disabled={walk.status !== 'success' || classification.status === 'running'}
+                        loading={classification.status === 'running'}
+                        onClick={() => void runOidClassify()}
+                      >
+                        OID 归类
+                      </Button>
+                      <Button
+                        data-testid="run-template-preview"
+                        theme="primary"
+                        disabled={classification.status !== 'success' || templatePreview.status === 'running'}
+                        loading={templatePreview.status === 'running'}
+                        onClick={() => void runTemplatePreview()}
+                      >
+                        预览 YAML
+                      </Button>
+                    </div>
+                    {walk.status === 'success' ? (
+                      <div className="pipeline-result" data-testid="snmp-walk-result">
+                        <strong>{walk.payload.items.length} OIDs</strong>
+                        <span>{walk.payload.target} / {walk.payload.version}</span>
+                      </div>
+                    ) : null}
+                    {walk.status === 'error' ? (
+                      <Alert className="pipeline-result" theme="error" title="SNMP walk 失败" message={walk.message} />
+                    ) : null}
+                    {classification.status === 'success' ? (
+                      <div className="pipeline-result" data-testid="oid-classify-result">
+                        {classification.payload.items.map((item) => (
+                          <Tag key={item.oid} theme="default" variant="light">
+                            {item.group}: {item.name}
+                          </Tag>
+                        ))}
+                      </div>
+                    ) : null}
+                    {classification.status === 'error' ? (
+                      <Alert
+                        className="pipeline-result"
+                        theme="error"
+                        title="OID 归类失败"
+                        message={classification.message}
+                      />
+                    ) : null}
+                    {templatePreview.status === 'success' ? (
+                      <pre className="template-preview" data-testid="template-preview">
+                        {templatePreview.payload.yaml}
+                      </pre>
+                    ) : null}
+                    {templatePreview.status === 'error' ? (
+                      <Alert
+                        className="pipeline-result"
+                        theme="error"
+                        title="模板预览失败"
+                        message={templatePreview.message}
+                      />
                     ) : null}
                     {snmpTest.status === 'error' ? (
                       <Alert
