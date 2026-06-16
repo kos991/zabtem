@@ -126,6 +126,7 @@ export function App() {
   const [walk, setWalk] = useState<AsyncState<SnmpWalkPayload>>({ status: 'idle' });
   const [classification, setClassification] = useState<AsyncState<ClassifyPayload>>({ status: 'idle' });
   const [templatePreview, setTemplatePreview] = useState<AsyncState<TemplatePreviewPayload>>({ status: 'idle' });
+  const [selectedTemplateItemOids, setSelectedTemplateItemOids] = useState<string[]>([]);
   const [profile, setProfile] = useState({
     target: '192.168.1.10',
     version: 'v2c',
@@ -177,6 +178,7 @@ export function App() {
     setWalk({ status: 'idle' });
     setClassification({ status: 'idle' });
     setTemplatePreview({ status: 'idle' });
+    setSelectedTemplateItemOids([]);
 
     try {
       const currentProfile = buildSnmpProfileRequest();
@@ -194,6 +196,7 @@ export function App() {
     setWalk({ status: 'running' });
     setClassification({ status: 'idle' });
     setTemplatePreview({ status: 'idle' });
+    setSelectedTemplateItemOids([]);
 
     try {
       const currentProfile = buildSnmpProfileRequest();
@@ -230,6 +233,7 @@ export function App() {
     });
     setClassification({ status: 'idle' });
     setTemplatePreview({ status: 'idle' });
+    setSelectedTemplateItemOids([]);
   }
 
   function buildSnmpProfileRequest(): SnmpProfileRequest {
@@ -261,6 +265,7 @@ export function App() {
     setWalk({ status: 'idle' });
     setClassification({ status: 'idle' });
     setTemplatePreview({ status: 'idle' });
+    setSelectedTemplateItemOids([]);
   }
 
   async function runOidClassify() {
@@ -268,10 +273,12 @@ export function App() {
 
     setClassification({ status: 'running' });
     setTemplatePreview({ status: 'idle' });
+    setSelectedTemplateItemOids([]);
 
     try {
       const payload = await classifyWalkItems(walk.payload.items);
       setClassification({ status: 'success', payload });
+      setSelectedTemplateItemOids(payload.items.map((item) => item.oid));
     } catch (error) {
       setClassification({
         status: 'error',
@@ -280,13 +287,27 @@ export function App() {
     }
   }
 
+  function toggleTemplateItem(oid: string) {
+    setSelectedTemplateItemOids((current) =>
+      current.includes(oid)
+        ? current.filter((itemOid) => itemOid !== oid)
+        : [...current, oid]
+    );
+    setTemplatePreview({ status: 'idle' });
+  }
+
   async function runTemplatePreview() {
     if (classification.status !== 'success') return;
+
+    const classifiedItems = classification.payload.items.filter((item) =>
+      selectedTemplateItemOids.includes(item.oid)
+    );
+
+    if (classifiedItems.length === 0) return;
 
     setTemplatePreview({ status: 'running' });
 
     try {
-      const classifiedItems = classification.payload.items;
       const payload = await previewTemplate(classifiedItems);
       setTemplatePreview({ status: 'success', payload });
       const entry: RunHistoryItem = {
@@ -582,7 +603,11 @@ export function App() {
                       <Button
                         data-testid="run-template-preview"
                         theme="primary"
-                        disabled={classification.status !== 'success' || templatePreview.status === 'running'}
+                        disabled={
+                          classification.status !== 'success' ||
+                          selectedTemplateItemOids.length === 0 ||
+                          templatePreview.status === 'running'
+                        }
                         loading={templatePreview.status === 'running'}
                         onClick={() => void runTemplatePreview()}
                       >
@@ -601,11 +626,18 @@ export function App() {
                       <Alert className="pipeline-result" theme="error" title="SNMP walk 失败" message={walk.message} />
                     ) : null}
                     {classification.status === 'success' ? (
-                      <div className="pipeline-result" data-testid="oid-classify-result">
+                      <div className="template-item-list" data-testid="oid-classify-result">
                         {classification.payload.items.map((item) => (
-                          <Tag key={item.oid} theme="default" variant="light">
-                            {item.group}: {item.name}
-                          </Tag>
+                          <label className="template-item-row" key={item.oid}>
+                            <input
+                              data-testid={`template-item-${item.name}`}
+                              type="checkbox"
+                              checked={selectedTemplateItemOids.includes(item.oid)}
+                              onChange={() => toggleTemplateItem(item.oid)}
+                            />
+                            <span>{item.group}: {item.name}</span>
+                            <code>{item.oid}</code>
+                          </label>
                         ))}
                       </div>
                     ) : null}

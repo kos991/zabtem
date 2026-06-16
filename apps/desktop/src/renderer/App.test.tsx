@@ -213,6 +213,31 @@ describe('App workbench', () => {
     });
   });
 
+  test('previews yaml with only selected classified items', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByTestId('run-snmp-test'));
+    await userEvent.click(await screen.findByTestId('run-snmp-walk'));
+    await userEvent.click(await screen.findByTestId('run-oid-classify'));
+
+    await userEvent.click(await screen.findByTestId('template-item-ifInOctets'));
+    await userEvent.click(screen.getByTestId('run-template-preview'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/template/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateName: 'Template Zabtem Simulated SNMP',
+          items: [
+            { oid: '1.3.6.1.2.1.1.1.0', name: 'sysDescr', group: 'system', zabbixType: 'SNMP_AGENT', valueType: 'text' },
+            { oid: '1.3.6.1.2.1.25.2.3.1.6.1', name: 'hrStorageUsed', group: 'storage', zabbixType: 'SNMP_AGENT', valueType: 'gauge' }
+          ]
+        })
+      });
+    });
+  });
+
   test('copies generated yaml to the clipboard', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });

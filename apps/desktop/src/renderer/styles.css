@@ -430,6 +430,52 @@ select {
   font-size: 12px;
 }
 
+.template-item-list {
+  display: grid;
+  grid-column: 2;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.template-item-row {
+  display: grid;
+  grid-template-columns: 16px minmax(120px, 0.75fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 8px;
+  border: 1px solid #e6ecf2;
+  border-radius: 6px;
+  background: #fbfcfe;
+  cursor: pointer;
+}
+
+.template-item-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #0d8f78;
+}
+
+.template-item-row span {
+  overflow: hidden;
+  color: #142033;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-item-row code {
+  overflow-wrap: anywhere;
+  color: #65758b;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+
 .template-toolbar {
   display: flex;
   grid-column: 2;
@@ -651,8 +697,17 @@ select {
 
   .pipeline-actions,
   .pipeline-result,
+  .template-item-list,
   .template-toolbar,
   .template-preview {
     grid-column: 1;
+  }
+
+  .template-item-row {
+    grid-template-columns: 16px minmax(0, 1fr);
+  }
+
+  .template-item-row code {
+    grid-column: 2;
   }
 }
