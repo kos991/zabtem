@@ -300,6 +300,40 @@ select {
   grid-column: 2;
 }
 
+.snmp-result {
+  grid-column: 2;
+}
+
+.snmp-result-success {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #bee7dc;
+  border-radius: 8px;
+  background: #f0faf7;
+}
+
+.snmp-result-success div {
+  display: grid;
+  gap: 4px;
+}
+
+.snmp-result-success span {
+  color: #65758b;
+  font-size: 12px;
+}
+
+.snmp-result-success strong {
+  color: #142033;
+  font-size: 14px;
+}
+
+.snmp-result-success .t-tag {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
 .task-list {
   display: grid;
   border: 1px solid #dfe6ee;
@@ -454,5 +488,13 @@ select {
 
   .run-panel .t-space {
     grid-column: 1;
+  }
+
+  .snmp-result {
+    grid-column: 1;
+  }
+
+  .snmp-result-success {
+    grid-template-columns: 1fr;
   }
 }

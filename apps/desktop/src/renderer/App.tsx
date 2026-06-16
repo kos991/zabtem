@@ -30,14 +30,28 @@ type HealthPayload = {
   service?: string;
 };
 
+type SnmpTestPayload = {
+  reachable: boolean;
+  target: string;
+  version: string;
+  latencyMs: number;
+  message: string;
+};
+
+type SnmpTestState =
+  | { status: 'idle' }
+  | { status: 'running' }
+  | { status: 'success'; payload: SnmpTestPayload }
+  | { status: 'error'; message: string };
+
 const { Header, Content, Aside } = Layout;
 
 const workflowSteps = [
-  { title: '项目配置', description: '项目、厂商和模板目标', state: 'ready', icon: <DashboardIcon /> },
-  { title: 'SNMP Profile', description: '团体字、版本和连接参数', state: 'ready', icon: <SettingIcon /> },
-  { title: '设备采集', description: '连接测试和 walk 采集', state: 'next', icon: <CloudDownloadIcon /> },
-  { title: 'MIB 映射', description: 'OID 归类和监控项候选', state: 'planned', icon: <SearchIcon /> },
-  { title: '模板导出', description: 'Zabbix 7.0 YAML 预览', state: 'planned', icon: <FileExportIcon /> }
+  { id: 'project', title: '项目配置', description: '项目、厂商和模板目标', state: 'ready', icon: <DashboardIcon /> },
+  { id: 'snmp-profile', title: 'SNMP Profile', description: '团体字、版本和连接参数', state: 'ready', icon: <SettingIcon /> },
+  { id: 'collection', title: '设备采集', description: '连接测试和 walk 采集', state: 'next', icon: <CloudDownloadIcon /> },
+  { id: 'mib-mapping', title: 'MIB 映射', description: 'OID 归类和监控项候选', state: 'planned', icon: <SearchIcon /> },
+  { id: 'template-export', title: '模板导出', description: 'Zabbix 7.0 YAML 预览', state: 'planned', icon: <FileExportIcon /> }
 ] as const;
 
 const taskQueue = [
@@ -83,6 +97,7 @@ export function App() {
     service: 'zabtem-server',
     message: '正在检查 API'
   });
+  const [snmpTest, setSnmpTest] = useState<SnmpTestState>({ status: 'idle' });
 
   useEffect(() => {
     let alive = true;
@@ -119,6 +134,34 @@ export function App() {
     };
   }, []);
 
+  async function runSnmpTest() {
+    setSnmpTest({ status: 'running' });
+
+    try {
+      const response = await fetch('/api/snmp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: '192.168.1.10',
+          version: 'v2c',
+          community: 'public'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = (await response.json()) as SnmpTestPayload;
+      setSnmpTest({ status: 'success', payload });
+    } catch (error) {
+      setSnmpTest({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'SNMP 连接测试失败'
+      });
+    }
+  }
+
   const completedSteps = useMemo(() => {
     const ready = workflowSteps.filter((step) => step.state === 'ready').length;
     return `${ready}/${workflowSteps.length}`;
@@ -140,7 +183,11 @@ export function App() {
 
         <div className="workflow-list" aria-label="模板生成流程">
           {workflowSteps.map((step, index) => (
-            <div className={`workflow-item workflow-item-${step.state}`} key={step.title}>
+            <div
+              className={`workflow-item workflow-item-${step.state}`}
+              data-testid={`workflow-${step.id}`}
+              key={step.title}
+            >
               <div className="workflow-index">{index + 1}</div>
               <div className="workflow-icon">{step.icon}</div>
               <div className="workflow-copy">
@@ -159,10 +206,10 @@ export function App() {
         <Header className="app-header">
           <div>
             <div className="breadcrumb-line">工作台 / 模板生成</div>
-            <h1>Zabbix 模板工作台</h1>
+            <h1 data-testid="workbench-title">Zabbix 模板工作台</h1>
           </div>
           <Space size={10} breakLine={false}>
-            <Tag theme={healthTagTheme} variant="light">{healthLabel}</Tag>
+            <Tag data-testid="api-status" theme={healthTagTheme} variant="light">{healthLabel}</Tag>
             <Tag theme="default" variant="light">Tauri</Tag>
             <Tag theme="default" variant="light">Rust API</Tag>
           </Space>
@@ -215,9 +262,42 @@ export function App() {
                       <p>当前界面已经固定项目、Profile、采集和导出的操作位置；后端 SNMP 能力接入后，这里执行真实连接测试。</p>
                     </div>
                     <Space size={10}>
-                      <Button theme="primary" icon={<CloudDownloadIcon />}>开始连接测试</Button>
+                      <Button
+                        data-testid="run-snmp-test"
+                        theme="primary"
+                        icon={<CloudDownloadIcon />}
+                        loading={snmpTest.status === 'running'}
+                        disabled={snmpTest.status === 'running'}
+                        onClick={() => void runSnmpTest()}
+                      >
+                        {snmpTest.status === 'running' ? '测试中' : '开始连接测试'}
+                      </Button>
                       <Button variant="outline" icon={<TerminalIcon />}>查看运行日志</Button>
                     </Space>
+                    {snmpTest.status === 'success' ? (
+                      <div className="snmp-result snmp-result-success" data-testid="snmp-test-result">
+                        <div>
+                          <span>连接结果</span>
+                          <strong>{snmpTest.payload.target} / {snmpTest.payload.version}</strong>
+                        </div>
+                        <div>
+                          <span>模拟延迟</span>
+                          <strong>{snmpTest.payload.latencyMs} ms</strong>
+                        </div>
+                        <Tag theme={snmpTest.payload.reachable ? 'success' : 'danger'} variant="light">
+                          {snmpTest.payload.message}
+                        </Tag>
+                      </div>
+                    ) : null}
+                    {snmpTest.status === 'error' ? (
+                      <Alert
+                        className="snmp-result"
+                        data-testid="snmp-test-result"
+                        theme="error"
+                        title="SNMP 连接测试失败"
+                        message={snmpTest.message}
+                      />
+                    ) : null}
                   </div>
                 </div>
               </Card>
