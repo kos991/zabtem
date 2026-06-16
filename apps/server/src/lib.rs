@@ -1,4 +1,5 @@
 mod snmp;
+mod template;
 
 use axum::{
     routing::{get, post},
@@ -18,6 +19,7 @@ pub fn app() -> Router {
         .route("/api/health", get(health))
         .route("/api/snmp/test", post(snmp::test_profile))
         .route("/api/snmp/walk", post(snmp::walk_profile))
+        .route("/api/template/classify", post(template::classify))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
 }
@@ -143,5 +145,35 @@ mod tests {
         assert_eq!(payload["target"], "192.168.1.10");
         assert!(payload["items"].as_array().expect("items array").len() >= 4);
         assert_eq!(payload["items"][0]["oid"], "1.3.6.1.2.1.1.1.0");
+    }
+
+    #[tokio::test]
+    async fn oid_classify_endpoint_groups_walk_items() {
+        let response = app()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method(axum::http::Method::POST)
+                    .uri("/api/template/classify")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        r#"{"items":[{"oid":"1.3.6.1.2.1.2.2.1.10.1","name":"ifInOctets","value":"42","valueType":"counter"}]}"#,
+                    ))
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should succeed");
+
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body should collect")
+            .to_bytes();
+        let payload: serde_json::Value = serde_json::from_slice(&body).expect("valid json");
+
+        assert_eq!(payload["items"][0]["group"], "interfaces");
+        assert_eq!(payload["items"][0]["zabbixType"], "SNMP_AGENT");
     }
 }
