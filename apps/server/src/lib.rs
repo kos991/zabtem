@@ -20,6 +20,7 @@ pub fn app() -> Router {
         .route("/api/snmp/test", post(snmp::test_profile))
         .route("/api/snmp/walk", post(snmp::walk_profile))
         .route("/api/template/classify", post(template::classify))
+        .route("/api/template/preview", post(template::preview))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
 }
@@ -175,5 +176,37 @@ mod tests {
 
         assert_eq!(payload["items"][0]["group"], "interfaces");
         assert_eq!(payload["items"][0]["zabbixType"], "SNMP_AGENT");
+    }
+
+    #[tokio::test]
+    async fn template_preview_endpoint_returns_zabbix_yaml() {
+        let response = app()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method(axum::http::Method::POST)
+                    .uri("/api/template/preview")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        r#"{"templateName":"Template Zabtem Simulated SNMP","items":[{"oid":"1.3.6.1.2.1.1.3.0","name":"sysUpTime","group":"system","zabbixType":"SNMP_AGENT","valueType":"timeticks"}]}"#,
+                    ))
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should succeed");
+
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body should collect")
+            .to_bytes();
+        let payload: serde_json::Value = serde_json::from_slice(&body).expect("valid json");
+        let yaml = payload["yaml"].as_str().expect("yaml string");
+
+        assert!(yaml.contains("zabbix_export:"));
+        assert!(yaml.contains("Template Zabtem Simulated SNMP"));
+        assert!(yaml.contains("sysUpTime"));
     }
 }
