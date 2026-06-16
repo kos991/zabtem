@@ -382,6 +382,12 @@ select {
   font-size: 12px;
 }
 
+.template-toolbar {
+  display: flex;
+  grid-column: 2;
+  gap: 8px;
+}
+
 .template-preview {
   grid-column: 2;
   max-height: 280px;
@@ -563,6 +569,7 @@ select {
 
   .pipeline-actions,
   .pipeline-result,
+  .template-toolbar,
   .template-preview {
     grid-column: 1;
   }

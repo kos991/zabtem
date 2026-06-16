@@ -161,4 +161,19 @@ describe('App workbench', () => {
       expect(screen.getByTestId('template-preview').textContent).toContain('Template Zabtem Simulated SNMP');
     });
   });
+
+  test('copies generated yaml to the clipboard', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+
+    await userEvent.click(screen.getByTestId('run-snmp-test'));
+    await userEvent.click(await screen.findByTestId('run-snmp-walk'));
+    await userEvent.click(await screen.findByTestId('run-oid-classify'));
+    await userEvent.click(await screen.findByTestId('run-template-preview'));
+    await userEvent.click(await screen.findByTestId('copy-template-yaml'));
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('zabbix_export'));
+  });
 });

@@ -218,6 +218,24 @@ export function App() {
     }
   }
 
+  async function copyTemplateYaml() {
+    if (templatePreview.status !== 'success') return;
+
+    await navigator.clipboard.writeText(templatePreview.payload.yaml);
+  }
+
+  function downloadTemplateYaml() {
+    if (templatePreview.status !== 'success') return;
+
+    const blob = new Blob([templatePreview.payload.yaml], { type: 'application/x-yaml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'zabtem-template.yaml';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   const completedSteps = useMemo(() => {
     const ready = workflowSteps.filter((step) => step.state === 'ready').length;
     return `${ready}/${workflowSteps.length}`;
@@ -430,9 +448,23 @@ export function App() {
                       />
                     ) : null}
                     {templatePreview.status === 'success' ? (
-                      <pre className="template-preview" data-testid="template-preview">
-                        {templatePreview.payload.yaml}
-                      </pre>
+                      <>
+                        <div className="template-toolbar">
+                          <Button
+                            data-testid="copy-template-yaml"
+                            variant="outline"
+                            onClick={() => void copyTemplateYaml()}
+                          >
+                            复制 YAML
+                          </Button>
+                          <Button data-testid="download-template-yaml" variant="outline" onClick={downloadTemplateYaml}>
+                            下载 YAML
+                          </Button>
+                        </div>
+                        <pre className="template-preview" data-testid="template-preview">
+                          {templatePreview.payload.yaml}
+                        </pre>
+                      </>
                     ) : null}
                     {templatePreview.status === 'error' ? (
                       <Alert
