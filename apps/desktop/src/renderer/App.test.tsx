@@ -8,6 +8,7 @@ describe('App workbench', () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
+    window.localStorage.clear();
     fetchMock.mockReset();
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       if (String(input) === '/api/health') {
@@ -175,5 +176,19 @@ describe('App workbench', () => {
     await userEvent.click(await screen.findByTestId('copy-template-yaml'));
 
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('zabbix_export'));
+  });
+
+  test('stores successful template previews in run history', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByTestId('run-snmp-test'));
+    await userEvent.click(await screen.findByTestId('run-snmp-walk'));
+    await userEvent.click(await screen.findByTestId('run-oid-classify'));
+    await userEvent.click(await screen.findByTestId('run-template-preview'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-history').textContent).toContain('Template Zabtem Simulated SNMP');
+      expect(window.localStorage.getItem('zabtem.runHistory')).toContain('Template Zabtem Simulated SNMP');
+    });
   });
 });

@@ -49,6 +49,14 @@ type AsyncState<T> =
   | { status: 'success'; payload: T }
   | { status: 'error'; message: string };
 
+type RunHistoryItem = {
+  id: string;
+  templateName: string;
+  target: string;
+  createdAt: string;
+  itemCount: number;
+};
+
 const { Header, Content, Aside } = Layout;
 
 const workflowSteps = [
@@ -110,6 +118,10 @@ export function App() {
     target: '192.168.1.10',
     version: 'v2c',
     community: 'public'
+  });
+  const [runHistory, setRunHistory] = useState<RunHistoryItem[]>(() => {
+    const saved = window.localStorage.getItem('zabtem.runHistory');
+    return saved ? (JSON.parse(saved) as RunHistoryItem[]) : [];
   });
 
   useEffect(() => {
@@ -208,8 +220,22 @@ export function App() {
     setTemplatePreview({ status: 'running' });
 
     try {
-      const payload = await previewTemplate(classification.payload.items);
+      const classifiedItems = classification.payload.items;
+      const payload = await previewTemplate(classifiedItems);
       setTemplatePreview({ status: 'success', payload });
+      const entry: RunHistoryItem = {
+        id: `${Date.now()}`,
+        templateName: 'Template Zabtem Simulated SNMP',
+        target: profile.target,
+        createdAt: new Date().toISOString(),
+        itemCount: classifiedItems.length
+      };
+
+      setRunHistory((current) => {
+        const next = [entry, ...current].slice(0, 8);
+        window.localStorage.setItem('zabtem.runHistory', JSON.stringify(next));
+        return next;
+      });
     } catch (error) {
       setTemplatePreview({
         status: 'error',
@@ -550,6 +576,17 @@ export function App() {
                 <div className="timeline-item">
                   <FileExportIcon />
                   <span>模板预览与导出</span>
+                </div>
+              </Card>
+
+              <Card bordered title="运行历史" className="side-card">
+                <div className="run-history" data-testid="run-history">
+                  {runHistory.map((item) => (
+                    <div className="history-row" key={item.id}>
+                      <strong>{item.templateName}</strong>
+                      <span>{item.target} / {item.itemCount} items</span>
+                    </div>
+                  ))}
                 </div>
               </Card>
 

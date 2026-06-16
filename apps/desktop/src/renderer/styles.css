@@ -497,6 +497,31 @@ select {
   color: #3979d6;
 }
 
+.run-history {
+  display: grid;
+  gap: 8px;
+}
+
+.history-row {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.history-row strong {
+  overflow-wrap: anywhere;
+  color: #142033;
+  font-size: 13px;
+}
+
+.history-row span {
+  color: #65758b;
+  font-size: 12px;
+}
+
 @media (max-width: 1120px) {
   .app-shell {
     display: block;
