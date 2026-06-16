@@ -1,8 +1,10 @@
+mod snmp;
+
 use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 #[derive(Debug, Serialize)]
@@ -11,27 +13,10 @@ pub struct HealthResponse {
     pub service: &'static str,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct SnmpTestRequest {
-    pub target: String,
-    pub version: String,
-    pub community: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct SnmpTestResponse {
-    pub reachable: bool,
-    pub target: String,
-    pub version: String,
-    #[serde(rename = "latencyMs")]
-    pub latency_ms: u64,
-    pub message: &'static str,
-}
-
 pub fn app() -> Router {
     Router::new()
         .route("/api/health", get(health))
-        .route("/api/snmp/test", post(snmp_test))
+        .route("/api/snmp/test", post(snmp::test_profile))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
 }
@@ -40,22 +25,6 @@ async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok",
         service: "zabtem-server",
-    })
-}
-
-async fn snmp_test(Json(request): Json<SnmpTestRequest>) -> Json<SnmpTestResponse> {
-    let SnmpTestRequest {
-        target,
-        version,
-        community: _,
-    } = request;
-
-    Json(SnmpTestResponse {
-        reachable: true,
-        target,
-        version,
-        latency_ms: 18,
-        message: "SNMP profile accepted by simulated collector",
     })
 }
 
@@ -123,5 +92,24 @@ mod tests {
         assert_eq!(payload["version"], "v2c");
         assert_eq!(payload["message"], "SNMP profile accepted by simulated collector");
         assert!(payload["latencyMs"].as_u64().expect("latency should be numeric") > 0);
+    }
+
+    #[tokio::test]
+    async fn snmp_test_rejects_empty_target() {
+        let response = app()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method(axum::http::Method::POST)
+                    .uri("/api/snmp/test")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        r#"{"target":"","version":"v2c","community":"public"}"#,
+                    ))
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should succeed");
+
+        assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
     }
 }
