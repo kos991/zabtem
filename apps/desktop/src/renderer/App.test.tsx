@@ -94,6 +94,24 @@ describe('App workbench', () => {
     });
   });
 
+  test('shows current collection and export capabilities as available', async () => {
+    render(<App />);
+
+    expect(screen.getByTestId('workflow-collection').textContent).toContain('可用');
+    expect(screen.getByTestId('workflow-mib-mapping').textContent).toContain('可用');
+    expect(screen.getByTestId('workflow-template-export').textContent).toContain('可用');
+
+    const walkTaskTitle = screen.getAllByText('采集 walk').find((element) => element.tagName === 'H3');
+    const yamlTaskTitle = screen.getAllByText('生成 YAML').find((element) => element.tagName === 'H3');
+
+    expect(walkTaskTitle?.closest('.task-row')?.textContent).toContain('可执行');
+    expect(yamlTaskTitle?.closest('.task-row')?.textContent).toContain('可执行');
+    expect(screen.getByText('当前范围').closest('.t-alert')?.textContent).toContain('模拟设备链路已可跑通');
+
+    expect(screen.queryByText('规划中')).toBeNull();
+    expect(screen.queryByText(/等后端采集能力接入/)).toBeNull();
+  });
+
   test('runs the simulated SNMP connection test from the workbench', async () => {
     render(<App />);
 

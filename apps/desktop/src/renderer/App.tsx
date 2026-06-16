@@ -63,30 +63,30 @@ const { Header, Content, Aside } = Layout;
 const workflowSteps = [
   { id: 'project', title: '项目配置', description: '项目、厂商和模板目标', state: 'ready', icon: <DashboardIcon /> },
   { id: 'snmp-profile', title: 'SNMP Profile', description: '团体字、版本和连接参数', state: 'ready', icon: <SettingIcon /> },
-  { id: 'collection', title: '设备采集', description: '连接测试和 walk 采集', state: 'next', icon: <CloudDownloadIcon /> },
-  { id: 'mib-mapping', title: 'MIB 映射', description: 'OID 归类和监控项候选', state: 'planned', icon: <SearchIcon /> },
-  { id: 'template-export', title: '模板导出', description: 'Zabbix 7.0 YAML 预览', state: 'planned', icon: <FileExportIcon /> }
+  { id: 'collection', title: '设备采集', description: '模拟设备 walk 采集已可用', state: 'ready', icon: <CloudDownloadIcon /> },
+  { id: 'mib-mapping', title: 'MIB 映射', description: 'OID 归类和监控项选择已可用', state: 'ready', icon: <SearchIcon /> },
+  { id: 'template-export', title: '模板导出', description: 'Zabbix 7.0 YAML 预览已可用', state: 'ready', icon: <FileExportIcon /> }
 ] as const;
 
 const taskQueue = [
   {
     title: '连接设备',
-    description: '使用当前 SNMP Profile 做最小连接测试。',
-    status: '下一步',
+    description: '使用当前 SNMP Profile 做连接测试，支持模拟设备。',
+    status: '可执行',
     icon: <LinkIcon />,
-    meta: '目标：192.168.1.10 / v2c'
+    meta: '目标：真实地址或 zabtem-sim-core-01'
   },
   {
     title: '采集 walk',
-    description: '保存原始 OID 样本，供 MIB 匹配使用。',
-    status: '规划中',
+    description: '保存模拟或导入的原始 OID 样本，供 MIB 匹配使用。',
+    status: '可执行',
     icon: <CloudDownloadIcon />,
     meta: '范围：system、interfaces、hrStorage'
   },
   {
     title: '生成 YAML',
-    description: '把审核后的监控项导出为 Zabbix 7.0 模板。',
-    status: '规划中',
+    description: '把勾选后的监控项导出为 Zabbix 7.0 模板。',
+    status: '可执行',
     icon: <FileExportIcon />,
     meta: '格式：Zabbix 7.0 YAML'
   }
@@ -112,7 +112,6 @@ const simulatedProfile = {
 
 function stateTheme(state: (typeof workflowSteps)[number]['state']) {
   if (state === 'ready') return 'success';
-  if (state === 'next') return 'primary';
   return 'default';
 }
 
@@ -419,7 +418,7 @@ export function App() {
                 <div className="status-cell">
                   <span>流程进度</span>
                   <strong>{completedSteps}</strong>
-                  <Tag theme="primary" variant="light">设备采集待接入</Tag>
+                  <Tag theme="success" variant="light">模拟采集链路已可用</Tag>
                 </div>
               </section>
 
@@ -427,9 +426,9 @@ export function App() {
                 <div className="card-toolbar">
                   <div>
                     <div className="section-kicker">当前任务</div>
-                    <h2>SNMP 连接测试</h2>
+                    <h2>SNMP 模拟采集链路</h2>
                   </div>
-                  <Tag theme="primary" variant="light">下一步</Tag>
+                  <Tag theme="success" variant="light">可执行</Tag>
                 </div>
 
                 <div className="operation-grid">
@@ -539,8 +538,8 @@ export function App() {
                   <div className="run-panel">
                     <div className="run-panel-icon"><ServerIcon /></div>
                     <div>
-                      <h3>等待采集服务接入</h3>
-                      <p>当前界面已经固定项目、Profile、采集和导出的操作位置；后端 SNMP 能力接入后，这里执行真实连接测试。</p>
+                      <h3>模拟设备链路已接入</h3>
+                      <p>当前可以用内置模拟设备完成连接测试、walk 采集、OID 归类、监控项勾选和 YAML 预览导出。</p>
                     </div>
                     <Space size={10}>
                       <Button
@@ -707,7 +706,7 @@ export function App() {
                         <p>{action.description}</p>
                         <span>{action.meta}</span>
                       </div>
-                      <Tag theme={action.status === '下一步' ? 'primary' : 'default'} variant="light">
+                      <Tag theme={action.status === '可执行' ? 'success' : 'default'} variant="light">
                         {action.status}
                       </Tag>
                     </div>
@@ -741,15 +740,15 @@ export function App() {
                   <CheckCircleIcon />
                   <span>Rust/Tauri baseline</span>
                 </div>
-                <div className="timeline-item active">
+                <div className="timeline-item done">
                   <ServerIcon />
                   <span>SNMP 连接测试</span>
                 </div>
-                <div className="timeline-item">
+                <div className="timeline-item done">
                   <LayersIcon />
                   <span>MIB/OID 归类</span>
                 </div>
-                <div className="timeline-item">
+                <div className="timeline-item active">
                   <FileExportIcon />
                   <span>模板预览与导出</span>
                 </div>
@@ -769,7 +768,7 @@ export function App() {
               <Alert
                 theme="info"
                 title="当前范围"
-                message="界面展示真实健康状态；业务按钮先作为流程入口展示，等后端采集能力接入后再启用。"
+                message="模拟设备链路已可跑通：连接测试、walk 采集、OID 归类、手动勾选监控项和 YAML 预览导出均已接入。真实设备采集接入后复用同一流程。"
               />
             </aside>
           </main>
