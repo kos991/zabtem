@@ -119,6 +119,7 @@ export function App() {
     version: 'v2c',
     community: 'public'
   });
+  const [walkSampleText, setWalkSampleText] = useState('');
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>(() => {
     const saved = window.localStorage.getItem('zabtem.runHistory');
     return saved ? (JSON.parse(saved) as RunHistoryItem[]) : [];
@@ -195,6 +196,31 @@ export function App() {
         message: error instanceof Error ? error.message : 'SNMP walk 失败'
       });
     }
+  }
+
+  function importWalkSample() {
+    const items = walkSampleText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [oid, name, value, valueType = 'text'] = line.split(/\s+/);
+        return { oid, name, value, valueType };
+      })
+      .filter((item) => item.oid && item.name && item.value);
+
+    if (items.length === 0) return;
+
+    setWalk({
+      status: 'success',
+      payload: {
+        target: profile.target,
+        version: profile.version,
+        items
+      }
+    });
+    setClassification({ status: 'idle' });
+    setTemplatePreview({ status: 'idle' });
   }
 
   async function runOidClassify() {
@@ -403,6 +429,17 @@ export function App() {
                       </Button>
                       <Button variant="outline" icon={<TerminalIcon />}>查看运行日志</Button>
                     </Space>
+                    <textarea
+                      className="walk-sample-input"
+                      data-testid="walk-sample-input"
+                      value={walkSampleText}
+                      onChange={(event) => setWalkSampleText(event.target.value)}
+                    />
+                    <div className="sample-actions">
+                      <Button data-testid="import-walk-sample" variant="outline" onClick={importWalkSample}>
+                        导入 walk 样本
+                      </Button>
+                    </div>
                     {snmpTest.status === 'success' ? (
                       <div className="snmp-result snmp-result-success" data-testid="snmp-test-result">
                         <div>

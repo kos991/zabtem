@@ -191,4 +191,19 @@ describe('App workbench', () => {
       expect(window.localStorage.getItem('zabtem.runHistory')).toContain('Template Zabtem Simulated SNMP');
     });
   });
+
+  test('classifies pasted walk samples without running snmp walk', async () => {
+    render(<App />);
+
+    await userEvent.type(
+      screen.getByTestId('walk-sample-input'),
+      '1.3.6.1.2.1.2.2.1.10.1 ifInOctets 42 counter'
+    );
+    await userEvent.click(screen.getByTestId('import-walk-sample'));
+    await userEvent.click(screen.getByTestId('run-oid-classify'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('oid-classify-result').textContent).toContain('interfaces');
+    });
+  });
 });

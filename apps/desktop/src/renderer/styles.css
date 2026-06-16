@@ -322,6 +322,23 @@ select {
   grid-column: 2;
 }
 
+.walk-sample-input {
+  grid-column: 2;
+  min-height: 84px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid #cfd8e3;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+
+.sample-actions {
+  display: flex;
+  grid-column: 2;
+  gap: 8px;
+}
+
 .snmp-result {
   grid-column: 2;
 }
@@ -581,6 +598,11 @@ select {
   }
 
   .run-panel .t-space {
+    grid-column: 1;
+  }
+
+  .walk-sample-input,
+  .sample-actions {
     grid-column: 1;
   }
 
