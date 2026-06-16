@@ -19,24 +19,17 @@ import {
   SettingIcon,
   TerminalIcon
 } from 'tdesign-icons-react';
+import {
+  getHealth,
+  testSnmpProfile,
+  type HealthPayload,
+  type SnmpTestPayload
+} from './api';
 
 type HealthState =
   | { status: 'checking'; service: string; message: string }
   | { status: 'online'; service: string; message: string }
   | { status: 'offline'; service: string; message: string };
-
-type HealthPayload = {
-  status?: string;
-  service?: string;
-};
-
-type SnmpTestPayload = {
-  reachable: boolean;
-  target: string;
-  version: string;
-  latencyMs: number;
-  message: string;
-};
 
 type SnmpTestState =
   | { status: 'idle' }
@@ -104,12 +97,7 @@ export function App() {
 
     async function checkHealth() {
       try {
-        const response = await fetch('/api/health');
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const payload = (await response.json()) as HealthPayload;
+        const payload: HealthPayload = await getHealth();
         if (!alive) return;
 
         setHealth({
@@ -138,21 +126,11 @@ export function App() {
     setSnmpTest({ status: 'running' });
 
     try {
-      const response = await fetch('/api/snmp/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target: '192.168.1.10',
-          version: 'v2c',
-          community: 'public'
-        })
+      const payload = await testSnmpProfile({
+        target: '192.168.1.10',
+        version: 'v2c',
+        community: 'public'
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const payload = (await response.json()) as SnmpTestPayload;
       setSnmpTest({ status: 'success', payload });
     } catch (error) {
       setSnmpTest({
