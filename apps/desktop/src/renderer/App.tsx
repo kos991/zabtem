@@ -27,6 +27,7 @@ import {
   walkSnmpProfile,
   type ClassifyPayload,
   type HealthPayload,
+  type SnmpProfileRequest,
   type SnmpTestPayload,
   type SnmpWalkPayload,
   type TemplatePreviewPayload
@@ -117,7 +118,12 @@ export function App() {
   const [profile, setProfile] = useState({
     target: '192.168.1.10',
     version: 'v2c',
-    community: 'public'
+    community: 'public',
+    securityName: '',
+    authProtocol: 'SHA',
+    authPassword: '',
+    privProtocol: 'AES',
+    privPassword: ''
   });
   const [walkSampleText, setWalkSampleText] = useState('');
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>(() => {
@@ -162,11 +168,7 @@ export function App() {
     setTemplatePreview({ status: 'idle' });
 
     try {
-      const currentProfile = {
-        target: profile.target.trim(),
-        version: profile.version,
-        community: profile.community.trim()
-      };
+      const currentProfile = buildSnmpProfileRequest();
       const payload = await testSnmpProfile(currentProfile);
       setSnmpTest({ status: 'success', payload });
     } catch (error) {
@@ -183,11 +185,7 @@ export function App() {
     setTemplatePreview({ status: 'idle' });
 
     try {
-      const currentProfile = {
-        target: profile.target.trim(),
-        version: profile.version,
-        community: profile.community.trim()
-      };
+      const currentProfile = buildSnmpProfileRequest();
       const payload = await walkSnmpProfile(currentProfile);
       setWalk({ status: 'success', payload });
     } catch (error) {
@@ -221,6 +219,29 @@ export function App() {
     });
     setClassification({ status: 'idle' });
     setTemplatePreview({ status: 'idle' });
+  }
+
+  function buildSnmpProfileRequest(): SnmpProfileRequest {
+    const baseProfile = {
+      target: profile.target.trim(),
+      version: profile.version
+    };
+
+    if (profile.version === 'v3') {
+      return {
+        ...baseProfile,
+        securityName: profile.securityName.trim(),
+        authProtocol: profile.authProtocol,
+        authPassword: profile.authPassword,
+        privProtocol: profile.privProtocol,
+        privPassword: profile.privPassword
+      };
+    }
+
+    return {
+      ...baseProfile,
+      community: profile.community.trim()
+    };
   }
 
   async function runOidClassify() {
@@ -389,14 +410,6 @@ export function App() {
                         />
                       </label>
                       <label>
-                        <span>Community</span>
-                        <input
-                          data-testid="profile-community"
-                          value={profile.community}
-                          onChange={(event) => setProfile((current) => ({ ...current, community: event.target.value }))}
-                        />
-                      </label>
-                      <label>
                         <span>SNMP 版本</span>
                         <select
                           data-testid="profile-version"
@@ -405,8 +418,72 @@ export function App() {
                         >
                           <option value="v2c">v2c</option>
                           <option value="v1">v1</option>
+                          <option value="v3">v3</option>
                         </select>
                       </label>
+                      {profile.version === 'v3' ? (
+                        <div className="snmpv3-fields">
+                          <label>
+                            <span>安全用户名</span>
+                            <input
+                              data-testid="profile-username"
+                              value={profile.securityName}
+                              onChange={(event) => setProfile((current) => ({ ...current, securityName: event.target.value }))}
+                            />
+                          </label>
+                          <label>
+                            <span>认证协议</span>
+                            <select
+                              data-testid="profile-auth-protocol"
+                              value={profile.authProtocol}
+                              onChange={(event) => setProfile((current) => ({ ...current, authProtocol: event.target.value }))}
+                            >
+                              <option value="SHA">SHA</option>
+                              <option value="MD5">MD5</option>
+                              <option value="none">无</option>
+                            </select>
+                          </label>
+                          <label>
+                            <span>认证密码</span>
+                            <input
+                              data-testid="profile-auth-password"
+                              type="password"
+                              value={profile.authPassword}
+                              onChange={(event) => setProfile((current) => ({ ...current, authPassword: event.target.value }))}
+                            />
+                          </label>
+                          <label>
+                            <span>加密协议</span>
+                            <select
+                              data-testid="profile-priv-protocol"
+                              value={profile.privProtocol}
+                              onChange={(event) => setProfile((current) => ({ ...current, privProtocol: event.target.value }))}
+                            >
+                              <option value="AES">AES</option>
+                              <option value="DES">DES</option>
+                              <option value="none">无</option>
+                            </select>
+                          </label>
+                          <label>
+                            <span>加密密码</span>
+                            <input
+                              data-testid="profile-priv-password"
+                              type="password"
+                              value={profile.privPassword}
+                              onChange={(event) => setProfile((current) => ({ ...current, privPassword: event.target.value }))}
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <label>
+                          <span>Community</span>
+                          <input
+                            data-testid="profile-community"
+                            value={profile.community}
+                            onChange={(event) => setProfile((current) => ({ ...current, community: event.target.value }))}
+                          />
+                        </label>
+                      )}
                     </div>
                   </div>
 

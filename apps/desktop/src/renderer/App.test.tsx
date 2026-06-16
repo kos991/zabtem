@@ -138,6 +138,35 @@ describe('App workbench', () => {
     });
   });
 
+  test('uses SNMPv3 security fields when running the connection test', async () => {
+    render(<App />);
+
+    await userEvent.selectOptions(screen.getByTestId('profile-version'), 'v3');
+    await userEvent.type(screen.getByTestId('profile-username'), 'zabbix-user');
+    await userEvent.selectOptions(screen.getByTestId('profile-auth-protocol'), 'SHA');
+    await userEvent.type(screen.getByTestId('profile-auth-password'), 'auth-pass');
+    await userEvent.selectOptions(screen.getByTestId('profile-priv-protocol'), 'AES');
+    await userEvent.type(screen.getByTestId('profile-priv-password'), 'priv-pass');
+
+    await userEvent.click(screen.getByTestId('run-snmp-test'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/snmp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: '192.168.1.10',
+          version: 'v3',
+          securityName: 'zabbix-user',
+          authProtocol: 'SHA',
+          authPassword: 'auth-pass',
+          privProtocol: 'AES',
+          privPassword: 'priv-pass'
+        })
+      });
+    });
+  });
+
   test('runs walk, classification, and yaml preview after the connection test', async () => {
     render(<App />);
 

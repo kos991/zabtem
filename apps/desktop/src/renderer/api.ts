@@ -6,7 +6,12 @@ export type HealthPayload = {
 export type SnmpProfileRequest = {
   target: string;
   version: string;
-  community: string;
+  community?: string;
+  securityName?: string;
+  authProtocol?: string;
+  authPassword?: string;
+  privProtocol?: string;
+  privPassword?: string;
 };
 
 export type SnmpTestPayload = {

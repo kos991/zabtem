@@ -99,6 +99,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn snmp_test_endpoint_accepts_v3_security_profile() {
+        let response = app()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method(axum::http::Method::POST)
+                    .uri("/api/snmp/test")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        r#"{"target":"192.168.1.10","version":"v3","securityName":"zabbix-user","authProtocol":"SHA","authPassword":"auth-pass","privProtocol":"AES","privPassword":"priv-pass"}"#,
+                    ))
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should succeed");
+
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body should collect")
+            .to_bytes();
+        let payload: serde_json::Value = serde_json::from_slice(&body).expect("valid json");
+
+        assert_eq!(payload["reachable"], true);
+        assert_eq!(payload["version"], "v3");
+    }
+
+    #[tokio::test]
     async fn snmp_test_rejects_empty_target() {
         let response = app()
             .oneshot(

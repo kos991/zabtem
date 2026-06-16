@@ -273,6 +273,11 @@ select {
   gap: 5px;
 }
 
+.snmpv3-fields {
+  display: grid;
+  gap: 10px;
+}
+
 .profile-form input,
 .profile-form select {
   width: 100%;
