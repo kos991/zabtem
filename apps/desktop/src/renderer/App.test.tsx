@@ -167,6 +167,27 @@ describe('App workbench', () => {
     });
   });
 
+  test('loads a simulated device profile for local collection demos', async () => {
+    render(<App />);
+
+    await userEvent.clear(screen.getByTestId('profile-target'));
+    await userEvent.type(screen.getByTestId('profile-target'), '10.10.10.10');
+    await userEvent.click(screen.getByTestId('use-simulated-device'));
+    await userEvent.click(screen.getByTestId('run-snmp-test'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/snmp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: 'zabtem-sim-core-01',
+          version: 'v2c',
+          community: 'public'
+        })
+      });
+    });
+  });
+
   test('runs walk, classification, and yaml preview after the connection test', async () => {
     render(<App />);
 

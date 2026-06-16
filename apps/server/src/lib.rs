@@ -179,6 +179,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn snmp_walk_endpoint_returns_simulated_device_metadata() {
+        let response = app()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method(axum::http::Method::POST)
+                    .uri("/api/snmp/walk")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        r#"{"target":"zabtem-sim-core-01","version":"v2c","community":"public"}"#,
+                    ))
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should succeed");
+
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body should collect")
+            .to_bytes();
+        let payload: serde_json::Value = serde_json::from_slice(&body).expect("valid json");
+
+        assert_eq!(payload["deviceName"], "zabtem-sim-core-01");
+        assert!(payload["items"].as_array().expect("items array").len() >= 4);
+    }
+
+    #[tokio::test]
     async fn oid_classify_endpoint_groups_walk_items() {
         let response = app()
             .oneshot(

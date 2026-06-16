@@ -262,6 +262,32 @@ select {
   text-align: right;
 }
 
+.simulation-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e6ecf2;
+  background: #f6faf9;
+}
+
+.simulation-strip div {
+  display: grid;
+  gap: 3px;
+}
+
+.simulation-strip strong {
+  color: #142033;
+  font-size: 13px;
+}
+
+.simulation-strip span {
+  color: #65758b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .profile-form {
   display: grid;
   gap: 10px;
@@ -596,6 +622,10 @@ select {
   .task-row .t-tag {
     grid-column: 3;
     justify-self: start;
+  }
+
+  .simulation-strip {
+    grid-template-columns: 1fr;
   }
 
   .run-panel {

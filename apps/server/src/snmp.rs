@@ -41,6 +41,8 @@ pub struct SnmpWalkItem {
 pub struct SnmpWalkResponse {
     pub target: String,
     pub version: String,
+    #[serde(rename = "deviceName")]
+    pub device_name: String,
     pub items: Vec<SnmpWalkItem>,
 }
 
@@ -68,6 +70,7 @@ pub async fn walk_profile(
     }
 
     Ok(Json(SnmpWalkResponse {
+        device_name: simulated_device_name(&request.target),
         target: request.target,
         version: request.version,
         items: vec![
@@ -97,6 +100,14 @@ pub async fn walk_profile(
             },
         ],
     }))
+}
+
+fn simulated_device_name(target: &str) -> String {
+    if target.trim().is_empty() {
+        return "zabtem-sim-core-01".to_string();
+    }
+
+    target.trim().to_string()
 }
 
 fn is_valid_profile(request: &SnmpProfileRequest) -> bool {

@@ -32,6 +32,7 @@ export type SnmpWalkItem = {
 export type SnmpWalkPayload = {
   target: string;
   version: string;
+  deviceName?: string;
   items: SnmpWalkItem[];
 };
 

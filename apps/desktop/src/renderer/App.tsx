@@ -99,6 +99,17 @@ const profileRows = [
   ['采集策略', '只读 walk / 低并发']
 ] as const;
 
+const simulatedProfile = {
+  target: 'zabtem-sim-core-01',
+  version: 'v2c',
+  community: 'public',
+  securityName: '',
+  authProtocol: 'SHA',
+  authPassword: '',
+  privProtocol: 'AES',
+  privPassword: ''
+};
+
 function stateTheme(state: (typeof workflowSteps)[number]['state']) {
   if (state === 'ready') return 'success';
   if (state === 'next') return 'primary';
@@ -242,6 +253,14 @@ export function App() {
       ...baseProfile,
       community: profile.community.trim()
     };
+  }
+
+  function useSimulatedDevice() {
+    setProfile(simulatedProfile);
+    setSnmpTest({ status: 'idle' });
+    setWalk({ status: 'idle' });
+    setClassification({ status: 'idle' });
+    setTemplatePreview({ status: 'idle' });
   }
 
   async function runOidClassify() {
@@ -400,6 +419,15 @@ export function App() {
                         <strong>{value}</strong>
                       </div>
                     ))}
+                    <div className="simulation-strip">
+                      <div>
+                        <strong>模拟设备</strong>
+                        <span>无真实设备时用内置核心交换机样本跑完整流程</span>
+                      </div>
+                      <Button data-testid="use-simulated-device" variant="outline" onClick={useSimulatedDevice}>
+                        使用模拟设备
+                      </Button>
+                    </div>
                     <div className="profile-form">
                       <label>
                         <span>目标地址</span>
@@ -564,7 +592,9 @@ export function App() {
                     {walk.status === 'success' ? (
                       <div className="pipeline-result" data-testid="snmp-walk-result">
                         <strong>{walk.payload.items.length} OIDs</strong>
-                        <span>{walk.payload.target} / {walk.payload.version}</span>
+                        <span>
+                          {walk.payload.deviceName ?? walk.payload.target} / {walk.payload.version}
+                        </span>
                       </div>
                     ) : null}
                     {walk.status === 'error' ? (
