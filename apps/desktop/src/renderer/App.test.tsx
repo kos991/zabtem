@@ -114,6 +114,29 @@ describe('App workbench', () => {
     });
   });
 
+  test('uses the editable SNMP profile when running the connection test', async () => {
+    render(<App />);
+
+    await userEvent.clear(screen.getByTestId('profile-target'));
+    await userEvent.type(screen.getByTestId('profile-target'), '10.0.0.15');
+    await userEvent.clear(screen.getByTestId('profile-community'));
+    await userEvent.type(screen.getByTestId('profile-community'), 'private');
+
+    await userEvent.click(screen.getByTestId('run-snmp-test'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/snmp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: '10.0.0.15',
+          version: 'v2c',
+          community: 'private'
+        })
+      });
+    });
+  });
+
   test('runs walk, classification, and yaml preview after the connection test', async () => {
     render(<App />);
 

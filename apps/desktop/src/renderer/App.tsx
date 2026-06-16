@@ -106,6 +106,11 @@ export function App() {
   const [walk, setWalk] = useState<AsyncState<SnmpWalkPayload>>({ status: 'idle' });
   const [classification, setClassification] = useState<AsyncState<ClassifyPayload>>({ status: 'idle' });
   const [templatePreview, setTemplatePreview] = useState<AsyncState<TemplatePreviewPayload>>({ status: 'idle' });
+  const [profile, setProfile] = useState({
+    target: '192.168.1.10',
+    version: 'v2c',
+    community: 'public'
+  });
 
   useEffect(() => {
     let alive = true;
@@ -144,11 +149,12 @@ export function App() {
     setTemplatePreview({ status: 'idle' });
 
     try {
-      const payload = await testSnmpProfile({
-        target: '192.168.1.10',
-        version: 'v2c',
-        community: 'public'
-      });
+      const currentProfile = {
+        target: profile.target.trim(),
+        version: profile.version,
+        community: profile.community.trim()
+      };
+      const payload = await testSnmpProfile(currentProfile);
       setSnmpTest({ status: 'success', payload });
     } catch (error) {
       setSnmpTest({
@@ -164,11 +170,12 @@ export function App() {
     setTemplatePreview({ status: 'idle' });
 
     try {
-      const payload = await walkSnmpProfile({
-        target: '192.168.1.10',
-        version: 'v2c',
-        community: 'public'
-      });
+      const currentProfile = {
+        target: profile.target.trim(),
+        version: profile.version,
+        community: profile.community.trim()
+      };
+      const payload = await walkSnmpProfile(currentProfile);
       setWalk({ status: 'success', payload });
     } catch (error) {
       setWalk({
@@ -296,12 +303,41 @@ export function App() {
 
                 <div className="operation-grid">
                   <div className="profile-table" aria-label="当前 Profile">
-                    {profileRows.map(([label, value]) => (
+                    {profileRows.slice(0, 2).map(([label, value]) => (
                       <div className="profile-row" key={label}>
                         <span>{label}</span>
                         <strong>{value}</strong>
                       </div>
                     ))}
+                    <div className="profile-form">
+                      <label>
+                        <span>目标地址</span>
+                        <input
+                          data-testid="profile-target"
+                          value={profile.target}
+                          onChange={(event) => setProfile((current) => ({ ...current, target: event.target.value }))}
+                        />
+                      </label>
+                      <label>
+                        <span>Community</span>
+                        <input
+                          data-testid="profile-community"
+                          value={profile.community}
+                          onChange={(event) => setProfile((current) => ({ ...current, community: event.target.value }))}
+                        />
+                      </label>
+                      <label>
+                        <span>SNMP 版本</span>
+                        <select
+                          data-testid="profile-version"
+                          value={profile.version}
+                          onChange={(event) => setProfile((current) => ({ ...current, version: event.target.value }))}
+                        >
+                          <option value="v2c">v2c</option>
+                          <option value="v1">v1</option>
+                        </select>
+                      </label>
+                    </div>
                   </div>
 
                   <div className="run-panel">
