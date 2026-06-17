@@ -9,8 +9,6 @@ import {
 } from 'tdesign-react';
 import {
   CloudDownloadIcon,
-  FileExportIcon,
-  LinkIcon,
   ServerIcon,
   TerminalIcon
 } from 'tdesign-icons-react';
@@ -349,14 +347,14 @@ export function App() {
           <div className="brand-inline">
             <div className="brand-mark">Z</div>
             <div>
-              <div className="breadcrumb-line">Zabtem / SNMP MIB Template Studio</div>
-            <h1 data-testid="workbench-title">Zabbix 模板工作台</h1>
+              <div className="breadcrumb-line">Zabtem Console</div>
+              <h1 data-testid="workbench-title">Zabbix 模板工作台</h1>
             </div>
           </div>
-          <Space size={10} breakLine={false}>
+          <Space className="header-status" size={10} breakLine={false}>
             <Tag data-testid="api-status" theme={healthTagTheme} variant="light">{healthLabel}</Tag>
-            <Tag theme="default" variant="light">Tauri</Tag>
-            <Tag theme="default" variant="light">Rust API</Tag>
+            <Tag theme="default" variant="light">{health.service}</Tag>
+            <Tag theme="default" variant="light">Zabbix 7.0 YAML</Tag>
           </Space>
         </Header>
 
@@ -376,8 +374,8 @@ export function App() {
                   <div className="profile-table" aria-label="当前 Profile">
                     <div className="simulation-strip">
                       <div>
-                        <strong>模拟设备</strong>
-                        <span>无真实设备时用内置核心交换机样本跑完整流程</span>
+                        <strong>Collector profile</strong>
+                        <span>{profile.target} / {profile.version}</span>
                       </div>
                       <Button data-testid="use-simulated-device" variant="outline" onClick={useSimulatedDevice}>
                         使用模拟设备
@@ -473,7 +471,8 @@ export function App() {
                   <div className="run-panel" data-testid="collector-panel">
                     <div className="run-panel-icon"><ServerIcon /></div>
                     <div>
-                      <h3>采集与模板生成</h3>
+                      <h3>采集控制</h3>
+                      <span className="panel-caption">walk 样本可直接导入，无设备也能生成模板</span>
                     </div>
                     <Space size={10}>
                       <Button
@@ -490,6 +489,7 @@ export function App() {
                     <textarea
                       className="walk-sample-input"
                       data-testid="walk-sample-input"
+                      placeholder="1.3.6.1.2.1.2.2.1.10.1 ifInOctets 42 counter"
                       value={walkSampleText}
                       onChange={(event) => setWalkSampleText(event.target.value)}
                     />
@@ -643,12 +643,19 @@ export function App() {
                 </div>
 
                 <div className="mib-upload-panel">
-                  <input
-                    data-testid="mib-file-input"
-                    type="file"
-                    accept=".mib,.my,.txt"
-                    onChange={(event) => setSelectedMibFile(event.target.files?.[0] ?? null)}
-                  />
+                  <label className="mib-dropzone">
+                    <span className="dropzone-icon"><TerminalIcon /></span>
+                    <span className="dropzone-copy">
+                      <strong>{selectedMibFile ? selectedMibFile.name : '选择 MIB 文件'}</strong>
+                      <small>.mib / .my / .txt</small>
+                    </span>
+                    <input
+                      data-testid="mib-file-input"
+                      type="file"
+                      accept=".mib,.my,.txt"
+                      onChange={(event) => setSelectedMibFile(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
                   <Button
                     data-testid="run-mib-scan"
                     theme="primary"
@@ -667,6 +674,12 @@ export function App() {
                       <span>{mibScan.payload.fileName}</span>
                     </div>
                     <div className="mib-entry-list">
+                      <div className="mib-entry-row mib-entry-head">
+                        <span>Object</span>
+                        <span>OID</span>
+                        <span>Syntax</span>
+                        <span>Access</span>
+                      </div>
                       {mibScan.payload.entries.map((entry) => (
                         <div className="mib-entry-row" key={`${entry.name}-${entry.oid}`}>
                           <strong>{entry.name}</strong>
