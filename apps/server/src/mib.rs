@@ -134,7 +134,7 @@ fn parse_description(block: &[String]) -> String {
         .to_string();
 
     let mut index = start_index + 1;
-    while !text.matches('"').count().is_multiple_of(2) && index < block.len() {
+    while text.matches('"').count() % 2 != 0 && index < block.len() {
         text.push(' ');
         text.push_str(block[index].trim());
         index += 1;
@@ -154,14 +154,4 @@ fn parse_oid_assignment(value: &str) -> Option<String> {
         .collect();
 
     (!parts.is_empty()).then(|| parts.join("."))
-}
-
-trait MultipleOfExt {
-    fn is_multiple_of(self, rhs: usize) -> bool;
-}
-
-impl MultipleOfExt for usize {
-    fn is_multiple_of(self, rhs: usize) -> bool {
-        rhs != 0 && self % rhs == 0
-    }
 }
