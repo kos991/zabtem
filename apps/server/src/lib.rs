@@ -1,4 +1,5 @@
 mod snmp;
+mod mib;
 mod template;
 
 use axum::{
@@ -19,6 +20,7 @@ pub fn app() -> Router {
         .route("/api/health", get(health))
         .route("/api/snmp/test", post(snmp::test_profile))
         .route("/api/snmp/walk", post(snmp::walk_profile))
+        .route("/api/mib/scan", post(mib::scan))
         .route("/api/template/classify", post(template::classify))
         .route("/api/template/preview", post(template::preview))
         .layer(CorsLayer::permissive())
@@ -268,5 +270,42 @@ mod tests {
         assert!(yaml.contains("zabbix_export:"));
         assert!(yaml.contains("Template Zabtem Simulated SNMP"));
         assert!(yaml.contains("sysUpTime"));
+    }
+
+    #[tokio::test]
+    async fn mib_scan_endpoint_extracts_object_type_entries() {
+        let response = app()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method(axum::http::Method::POST)
+                    .uri("/api/mib/scan")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        r#"{"fileName":"ACME-SWITCH-MIB.mib","content":"ACME-SWITCH-MIB DEFINITIONS ::= BEGIN\nacmeCpuLoad OBJECT-TYPE\n    SYNTAX      Integer32\n    MAX-ACCESS  read-only\n    DESCRIPTION \"CPU load percentage\"\n    ::= { enterprises 4242 1 }\n\nacmeFanState OBJECT-TYPE\n    SYNTAX      INTEGER { ok(1), fail(2) }\n    MAX-ACCESS  read-only\n    DESCRIPTION \"Fan state\"\n    ::= { enterprises 4242 2 }\nEND"}"#,
+                    ))
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should succeed");
+
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body should collect")
+            .to_bytes();
+        let payload: serde_json::Value = serde_json::from_slice(&body).expect("valid json");
+
+        assert_eq!(payload["fileName"], "ACME-SWITCH-MIB.mib");
+        assert_eq!(payload["moduleName"], "ACME-SWITCH-MIB");
+        assert_eq!(payload["entries"].as_array().expect("entries array").len(), 2);
+        assert_eq!(payload["entries"][0]["name"], "acmeCpuLoad");
+        assert_eq!(payload["entries"][0]["oid"], "enterprises.4242.1");
+        assert_eq!(payload["entries"][0]["syntax"], "Integer32");
+        assert_eq!(payload["entries"][0]["access"], "read-only");
+        assert_eq!(payload["entries"][0]["description"], "CPU load percentage");
+        assert_eq!(payload["entries"][1]["name"], "acmeFanState");
     }
 }

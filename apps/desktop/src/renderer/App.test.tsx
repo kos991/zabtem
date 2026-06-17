@@ -69,6 +69,32 @@ describe('App workbench', () => {
         };
       }
 
+      if (String(input) === '/api/mib/scan') {
+        return {
+          ok: true,
+          json: async () => ({
+            fileName: 'ACME-SWITCH-MIB.mib',
+            moduleName: 'ACME-SWITCH-MIB',
+            entries: [
+              {
+                name: 'acmeCpuLoad',
+                oid: 'enterprises.4242.1',
+                syntax: 'Integer32',
+                access: 'read-only',
+                description: 'CPU load percentage'
+              },
+              {
+                name: 'acmeFanState',
+                oid: 'enterprises.4242.2',
+                syntax: 'INTEGER { ok(1), fail(2) }',
+                access: 'read-only',
+                description: 'Fan state'
+              }
+            ]
+          })
+        };
+      }
+
       throw new Error(`Unexpected fetch: ${String(input)}`);
     });
 
@@ -84,32 +110,44 @@ describe('App workbench', () => {
     render(<App />);
 
     expect(screen.getByTestId('workbench-title')).toBeTruthy();
-    expect(screen.getByTestId('workflow-project')).toBeTruthy();
-    expect(screen.getByTestId('workflow-snmp-profile')).toBeTruthy();
-    expect(screen.getByTestId('workflow-template-export')).toBeTruthy();
+    expect(screen.getByTestId('profile-panel')).toBeTruthy();
+    expect(screen.getByTestId('mib-panel')).toBeTruthy();
+    expect(screen.getByTestId('collector-panel')).toBeTruthy();
+    expect(screen.queryByText('任务队列')).toBeNull();
+    expect(screen.queryByText('里程碑')).toBeNull();
+    expect(screen.queryByText('当前范围')).toBeNull();
 
     await waitFor(() => {
-      expect(screen.getByText('zabtem-server')).toBeTruthy();
       expect(screen.getByTestId('api-status').textContent).toContain('API');
     });
   });
 
-  test('shows current collection and export capabilities as available', async () => {
+  test('scans an uploaded mib file and shows object candidates', async () => {
     render(<App />);
 
-    expect(screen.getByTestId('workflow-collection').textContent).toContain('可用');
-    expect(screen.getByTestId('workflow-mib-mapping').textContent).toContain('可用');
-    expect(screen.getByTestId('workflow-template-export').textContent).toContain('可用');
+    const file = new File(
+      ['ACME-SWITCH-MIB DEFINITIONS ::= BEGIN\nacmeCpuLoad OBJECT-TYPE\n    ::= { enterprises 4242 1 }\nEND'],
+      'ACME-SWITCH-MIB.mib',
+      { type: 'text/plain' }
+    );
 
-    const walkTaskTitle = screen.getAllByText('采集 walk').find((element) => element.tagName === 'H3');
-    const yamlTaskTitle = screen.getAllByText('生成 YAML').find((element) => element.tagName === 'H3');
+    await userEvent.upload(screen.getByTestId('mib-file-input'), file);
+    await userEvent.click(screen.getByTestId('run-mib-scan'));
 
-    expect(walkTaskTitle?.closest('.task-row')?.textContent).toContain('可执行');
-    expect(yamlTaskTitle?.closest('.task-row')?.textContent).toContain('可执行');
-    expect(screen.getByText('当前范围').closest('.t-alert')?.textContent).toContain('模拟设备链路已可跑通');
+    await waitFor(() => {
+      expect(screen.getByTestId('mib-scan-result').textContent).toContain('ACME-SWITCH-MIB');
+      expect(screen.getByTestId('mib-scan-result').textContent).toContain('acmeCpuLoad');
+      expect(screen.getByTestId('mib-scan-result').textContent).toContain('enterprises.4242.1');
+    });
 
-    expect(screen.queryByText('规划中')).toBeNull();
-    expect(screen.queryByText(/等后端采集能力接入/)).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith('/api/mib/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: 'ACME-SWITCH-MIB.mib',
+        content: 'ACME-SWITCH-MIB DEFINITIONS ::= BEGIN\nacmeCpuLoad OBJECT-TYPE\n    ::= { enterprises 4242 1 }\nEND'
+      })
+    });
   });
 
   test('runs the simulated SNMP connection test from the workbench', async () => {

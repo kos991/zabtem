@@ -52,6 +52,20 @@ export type TemplatePreviewPayload = {
   yaml: string;
 };
 
+export type MibEntry = {
+  name: string;
+  oid: string;
+  syntax: string;
+  access: string;
+  description: string;
+};
+
+export type MibScanPayload = {
+  fileName: string;
+  moduleName: string;
+  entries: MibEntry[];
+};
+
 export async function getHealth(): Promise<HealthPayload> {
   return getJson('/api/health');
 }
@@ -66,6 +80,10 @@ export async function walkSnmpProfile(profile: SnmpProfileRequest): Promise<Snmp
 
 export async function classifyWalkItems(items: SnmpWalkItem[]): Promise<ClassifyPayload> {
   return postJson('/api/template/classify', { items });
+}
+
+export async function scanMibFile(fileName: string, content: string): Promise<MibScanPayload> {
+  return postJson('/api/mib/scan', { fileName, content });
 }
 
 export async function previewTemplate(items: ClassifiedItem[]): Promise<TemplatePreviewPayload> {

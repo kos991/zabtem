@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Button,
@@ -8,25 +8,22 @@ import {
   Tag
 } from 'tdesign-react';
 import {
-  CheckCircleIcon,
   CloudDownloadIcon,
-  DashboardIcon,
   FileExportIcon,
-  LayersIcon,
   LinkIcon,
-  SearchIcon,
   ServerIcon,
-  SettingIcon,
   TerminalIcon
 } from 'tdesign-icons-react';
 import {
   classifyWalkItems,
   getHealth,
   previewTemplate,
+  scanMibFile,
   testSnmpProfile,
   walkSnmpProfile,
   type ClassifyPayload,
   type HealthPayload,
+  type MibScanPayload,
   type SnmpProfileRequest,
   type SnmpTestPayload,
   type SnmpWalkPayload,
@@ -58,46 +55,7 @@ type RunHistoryItem = {
   itemCount: number;
 };
 
-const { Header, Content, Aside } = Layout;
-
-const workflowSteps = [
-  { id: 'project', title: '项目配置', description: '项目、厂商和模板目标', state: 'ready', icon: <DashboardIcon /> },
-  { id: 'snmp-profile', title: 'SNMP Profile', description: '团体字、版本和连接参数', state: 'ready', icon: <SettingIcon /> },
-  { id: 'collection', title: '设备采集', description: '模拟设备 walk 采集已可用', state: 'ready', icon: <CloudDownloadIcon /> },
-  { id: 'mib-mapping', title: 'MIB 映射', description: 'OID 归类和监控项选择已可用', state: 'ready', icon: <SearchIcon /> },
-  { id: 'template-export', title: '模板导出', description: 'Zabbix 7.0 YAML 预览已可用', state: 'ready', icon: <FileExportIcon /> }
-] as const;
-
-const taskQueue = [
-  {
-    title: '连接设备',
-    description: '使用当前 SNMP Profile 做连接测试，支持模拟设备。',
-    status: '可执行',
-    icon: <LinkIcon />,
-    meta: '目标：真实地址或 zabtem-sim-core-01'
-  },
-  {
-    title: '采集 walk',
-    description: '保存模拟或导入的原始 OID 样本，供 MIB 匹配使用。',
-    status: '可执行',
-    icon: <CloudDownloadIcon />,
-    meta: '范围：system、interfaces、hrStorage'
-  },
-  {
-    title: '生成 YAML',
-    description: '把勾选后的监控项导出为 Zabbix 7.0 模板。',
-    status: '可执行',
-    icon: <FileExportIcon />,
-    meta: '格式：Zabbix 7.0 YAML'
-  }
-] as const;
-
-const profileRows = [
-  ['项目', '核心交换机模板'],
-  ['厂商', '通用 SNMP'],
-  ['SNMP 版本', 'v2c'],
-  ['采集策略', '只读 walk / 低并发']
-] as const;
+const { Header, Content } = Layout;
 
 const simulatedProfile = {
   target: 'zabtem-sim-core-01',
@@ -110,11 +68,6 @@ const simulatedProfile = {
   privPassword: ''
 };
 
-function stateTheme(state: (typeof workflowSteps)[number]['state']) {
-  if (state === 'ready') return 'success';
-  return 'default';
-}
-
 export function App() {
   const [health, setHealth] = useState<HealthState>({
     status: 'checking',
@@ -125,7 +78,9 @@ export function App() {
   const [walk, setWalk] = useState<AsyncState<SnmpWalkPayload>>({ status: 'idle' });
   const [classification, setClassification] = useState<AsyncState<ClassifyPayload>>({ status: 'idle' });
   const [templatePreview, setTemplatePreview] = useState<AsyncState<TemplatePreviewPayload>>({ status: 'idle' });
+  const [mibScan, setMibScan] = useState<AsyncState<MibScanPayload>>({ status: 'idle' });
   const [selectedTemplateItemOids, setSelectedTemplateItemOids] = useState<string[]>([]);
+  const [selectedMibFile, setSelectedMibFile] = useState<File | null>(null);
   const [profile, setProfile] = useState({
     target: '192.168.1.10',
     version: 'v2c',
@@ -295,6 +250,42 @@ export function App() {
     setTemplatePreview({ status: 'idle' });
   }
 
+  async function runMibScan() {
+    if (!selectedMibFile) return;
+
+    setMibScan({ status: 'running' });
+    setTemplatePreview({ status: 'idle' });
+
+    try {
+      const content = await selectedMibFile.text();
+      const payload = await scanMibFile(selectedMibFile.name, content);
+      setMibScan({ status: 'success', payload });
+
+      const items = payload.entries.map((entry) => ({
+        oid: entry.oid,
+        name: entry.name,
+        group: payload.moduleName,
+        zabbixType: 'SNMP_AGENT',
+        valueType: mibSyntaxToValueType(entry.syntax)
+      }));
+
+      setClassification({ status: 'success', payload: { items } });
+      setSelectedTemplateItemOids(items.map((item) => item.oid));
+    } catch (error) {
+      setMibScan({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'MIB 扫描失败'
+      });
+    }
+  }
+
+  function mibSyntaxToValueType(syntax: string) {
+    const normalized = syntax.toLowerCase();
+    if (normalized.includes('counter')) return 'counter';
+    if (normalized.includes('integer') || normalized.includes('gauge')) return 'gauge';
+    return 'text';
+  }
+
   async function runTemplatePreview() {
     if (classification.status !== 'success') return;
 
@@ -348,51 +339,19 @@ export function App() {
     URL.revokeObjectURL(url);
   }
 
-  const completedSteps = useMemo(() => {
-    const ready = workflowSteps.filter((step) => step.state === 'ready').length;
-    return `${ready}/${workflowSteps.length}`;
-  }, []);
-
   const healthTagTheme = health.status === 'online' ? 'success' : health.status === 'checking' ? 'warning' : 'danger';
   const healthLabel = health.status === 'online' ? 'API 在线' : health.status === 'checking' ? '检查中' : 'API 离线';
 
   return (
     <Layout className="app-shell">
-      <Aside className="app-sider" width="264px">
-        <div className="brand-block">
-          <div className="brand-mark">Z</div>
-          <div>
-            <div className="brand-name">Zabtem</div>
-            <div className="brand-subtitle">Zabbix Template Studio</div>
-          </div>
-        </div>
-
-        <div className="workflow-list" aria-label="模板生成流程">
-          {workflowSteps.map((step, index) => (
-            <div
-              className={`workflow-item workflow-item-${step.state}`}
-              data-testid={`workflow-${step.id}`}
-              key={step.title}
-            >
-              <div className="workflow-index">{index + 1}</div>
-              <div className="workflow-icon">{step.icon}</div>
-              <div className="workflow-copy">
-                <div className="workflow-title">{step.title}</div>
-                <div className="workflow-description">{step.description}</div>
-              </div>
-              <Tag size="small" theme={stateTheme(step.state)} variant="light">
-                {step.state === 'ready' ? '就绪' : step.state === 'next' ? '下一步' : '规划'}
-              </Tag>
-            </div>
-          ))}
-        </div>
-      </Aside>
-
       <Layout>
         <Header className="app-header">
-          <div>
-            <div className="breadcrumb-line">工作台 / 模板生成</div>
+          <div className="brand-inline">
+            <div className="brand-mark">Z</div>
+            <div>
+              <div className="breadcrumb-line">Zabtem / SNMP MIB Template Studio</div>
             <h1 data-testid="workbench-title">Zabbix 模板工作台</h1>
+            </div>
           </div>
           <Space size={10} breakLine={false}>
             <Tag data-testid="api-status" theme={healthTagTheme} variant="light">{healthLabel}</Tag>
@@ -403,42 +362,18 @@ export function App() {
 
         <Content className="app-content">
           <main className="content-grid">
-            <section className="primary-column">
-              <section className="status-strip" aria-label="运行状态">
-                <div className="status-cell">
-                  <span>API 服务</span>
-                  <strong>{health.service}</strong>
-                  <Tag theme={healthTagTheme} variant="light">{health.message}</Tag>
-                </div>
-                <div className="status-cell">
-                  <span>后端入口</span>
-                  <strong>/api/health</strong>
-                  <Tag theme="success" variant="light">已验证</Tag>
-                </div>
-                <div className="status-cell">
-                  <span>流程进度</span>
-                  <strong>{completedSteps}</strong>
-                  <Tag theme="success" variant="light">模拟采集链路已可用</Tag>
-                </div>
-              </section>
-
+            <section className="primary-column" data-testid="profile-panel">
               <Card bordered className="operation-card">
                 <div className="card-toolbar">
                   <div>
-                    <div className="section-kicker">当前任务</div>
-                    <h2>SNMP 模拟采集链路</h2>
+                    <div className="section-kicker">Profile</div>
+                    <h2>SNMP 目标</h2>
                   </div>
-                  <Tag theme="success" variant="light">可执行</Tag>
+                  <Tag theme={healthTagTheme} variant="light">{health.message}</Tag>
                 </div>
 
                 <div className="operation-grid">
                   <div className="profile-table" aria-label="当前 Profile">
-                    {profileRows.slice(0, 2).map(([label, value]) => (
-                      <div className="profile-row" key={label}>
-                        <span>{label}</span>
-                        <strong>{value}</strong>
-                      </div>
-                    ))}
                     <div className="simulation-strip">
                       <div>
                         <strong>模拟设备</strong>
@@ -535,11 +470,10 @@ export function App() {
                     </div>
                   </div>
 
-                  <div className="run-panel">
+                  <div className="run-panel" data-testid="collector-panel">
                     <div className="run-panel-icon"><ServerIcon /></div>
                     <div>
-                      <h3>模拟设备链路已接入</h3>
-                      <p>当前可以用内置模拟设备完成连接测试、walk 采集、OID 归类、监控项勾选和 YAML 预览导出。</p>
+                      <h3>采集与模板生成</h3>
                     </div>
                     <Space size={10}>
                       <Button
@@ -552,7 +486,6 @@ export function App() {
                       >
                         {snmpTest.status === 'running' ? '测试中' : '开始连接测试'}
                       </Button>
-                      <Button variant="outline" icon={<TerminalIcon />}>查看运行日志</Button>
                     </Space>
                     <textarea
                       className="walk-sample-input"
@@ -684,93 +617,73 @@ export function App() {
                         message={snmpTest.message}
                       />
                     ) : null}
-                  </div>
-                </div>
-              </Card>
-
-              <Card bordered className="queue-card">
-                <div className="card-toolbar">
-                  <div>
-                    <div className="section-kicker">任务队列</div>
-                    <h2>建议的实现顺序</h2>
-                  </div>
-                </div>
-
-                <div className="task-list">
-                  {taskQueue.map((action, index) => (
-                    <div className="task-row" key={action.title}>
-                      <div className="task-index">{index + 1}</div>
-                      <div className="task-icon">{action.icon}</div>
-                      <div className="task-copy">
-                        <h3>{action.title}</h3>
-                        <p>{action.description}</p>
-                        <span>{action.meta}</span>
-                      </div>
-                      <Tag theme={action.status === '可执行' ? 'success' : 'default'} variant="light">
-                        {action.status}
-                      </Tag>
+                    <div className="run-history" data-testid="run-history">
+                      {runHistory.map((item) => (
+                        <div className="history-row" key={item.id}>
+                          <strong>{item.templateName}</strong>
+                          <span>{item.target} / {item.itemCount} items</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </Card>
             </section>
 
-            <aside className="side-column">
-              <Card bordered title="运行环境" className="side-card">
-                <div className="env-row">
-                  <span>前端</span>
-                  <strong>Vite + React</strong>
+            <section className="mib-column" data-testid="mib-panel">
+              <Card bordered className="operation-card">
+                <div className="card-toolbar">
+                  <div>
+                    <div className="section-kicker">MIB</div>
+                    <h2>文件上传扫描</h2>
+                  </div>
+                  <Tag theme={mibScan.status === 'success' ? 'success' : 'default'} variant="light">
+                    {mibScan.status === 'success' ? `${mibScan.payload.entries.length} OIDs` : 'MIB'}
+                  </Tag>
                 </div>
-                <div className="env-row">
-                  <span>API</span>
-                  <strong>Axum / Rust</strong>
-                </div>
-                <div className="env-row">
-                  <span>桌面</span>
-                  <strong>Tauri 2</strong>
-                </div>
-                <div className="env-row">
-                  <span>代理</span>
-                  <strong>/api -&gt; 127.0.0.1:18080</strong>
-                </div>
-              </Card>
 
-              <Card bordered title="里程碑" className="side-card">
-                <div className="timeline-item done">
-                  <CheckCircleIcon />
-                  <span>Rust/Tauri baseline</span>
+                <div className="mib-upload-panel">
+                  <input
+                    data-testid="mib-file-input"
+                    type="file"
+                    accept=".mib,.my,.txt"
+                    onChange={(event) => setSelectedMibFile(event.target.files?.[0] ?? null)}
+                  />
+                  <Button
+                    data-testid="run-mib-scan"
+                    theme="primary"
+                    disabled={!selectedMibFile || mibScan.status === 'running'}
+                    loading={mibScan.status === 'running'}
+                    onClick={() => void runMibScan()}
+                  >
+                    扫描 MIB
+                  </Button>
                 </div>
-                <div className="timeline-item done">
-                  <ServerIcon />
-                  <span>SNMP 连接测试</span>
-                </div>
-                <div className="timeline-item done">
-                  <LayersIcon />
-                  <span>MIB/OID 归类</span>
-                </div>
-                <div className="timeline-item active">
-                  <FileExportIcon />
-                  <span>模板预览与导出</span>
-                </div>
-              </Card>
 
-              <Card bordered title="运行历史" className="side-card">
-                <div className="run-history" data-testid="run-history">
-                  {runHistory.map((item) => (
-                    <div className="history-row" key={item.id}>
-                      <strong>{item.templateName}</strong>
-                      <span>{item.target} / {item.itemCount} items</span>
+                {mibScan.status === 'success' ? (
+                  <div className="mib-result" data-testid="mib-scan-result">
+                    <div className="mib-result-header">
+                      <strong>{mibScan.payload.moduleName}</strong>
+                      <span>{mibScan.payload.fileName}</span>
                     </div>
-                  ))}
-                </div>
-              </Card>
+                    <div className="mib-entry-list">
+                      {mibScan.payload.entries.map((entry) => (
+                        <div className="mib-entry-row" key={`${entry.name}-${entry.oid}`}>
+                          <strong>{entry.name}</strong>
+                          <code>{entry.oid}</code>
+                          <span>{entry.syntax}</span>
+                          <span>{entry.access}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
-              <Alert
-                theme="info"
-                title="当前范围"
-                message="模拟设备链路已可跑通：连接测试、walk 采集、OID 归类、手动勾选监控项和 YAML 预览导出均已接入。真实设备采集接入后复用同一流程。"
-              />
-            </aside>
+                {mibScan.status === 'error' ? (
+                  <Alert className="pipeline-result" theme="error" title="MIB 扫描失败" message={mibScan.message} />
+                ) : null}
+              </Card>
+            </section>
           </main>
         </Content>
       </Layout>

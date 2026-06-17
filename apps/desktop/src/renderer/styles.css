@@ -131,6 +131,12 @@ select {
   background: #ffffff;
 }
 
+.brand-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .breadcrumb-line,
 .section-kicker {
   color: #65758b;
@@ -152,13 +158,13 @@ select {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 316px;
+  grid-template-columns: minmax(520px, 1.1fr) minmax(420px, 0.9fr);
   gap: 18px;
   max-width: 1480px;
 }
 
 .primary-column,
-.side-column {
+.mib-column {
   display: grid;
   align-content: start;
   gap: 16px;
@@ -231,7 +237,7 @@ select {
 
 .operation-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
   gap: 16px;
 }
 
@@ -497,6 +503,91 @@ select {
   white-space: pre-wrap;
 }
 
+.mib-upload-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.mib-upload-panel input {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #cfd8e3;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #142033;
+}
+
+.mib-result {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.mib-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  background: #f8fbfb;
+}
+
+.mib-result-header strong {
+  color: #142033;
+  font-size: 14px;
+}
+
+.mib-result-header span {
+  overflow-wrap: anywhere;
+  color: #65758b;
+  font-size: 12px;
+  text-align: right;
+}
+
+.mib-entry-list {
+  display: grid;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.mib-entry-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(0, 1.2fr) minmax(110px, 0.8fr) minmax(76px, 0.6fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e6ecf2;
+}
+
+.mib-entry-row:last-child {
+  border-bottom: 0;
+}
+
+.mib-entry-row strong {
+  overflow-wrap: anywhere;
+  color: #142033;
+  font-size: 13px;
+}
+
+.mib-entry-row code {
+  overflow-wrap: anywhere;
+  color: #65758b;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+
+.mib-entry-row span {
+  overflow-wrap: anywhere;
+  color: #65758b;
+  font-size: 12px;
+}
+
 .task-list {
   display: grid;
   border: 1px solid #dfe6ee;
@@ -644,9 +735,8 @@ select {
     padding: 16px;
   }
 
-  .status-strip,
   .operation-grid,
-  .workflow-list {
+  .mib-upload-panel {
     grid-template-columns: 1fr;
   }
 
@@ -701,6 +791,10 @@ select {
   .template-toolbar,
   .template-preview {
     grid-column: 1;
+  }
+
+  .mib-entry-row {
+    grid-template-columns: 1fr;
   }
 
   .template-item-row {
