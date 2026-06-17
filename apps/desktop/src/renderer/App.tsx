@@ -463,17 +463,17 @@ export function App() {
       <Layout>
         <Header className="app-header">
           <div className="brand-inline">
-            <div className="brand-mark">Z</div>
             <div>
-              <div className="breadcrumb-line">Zabtem Console</div>
+              <div className="breadcrumb-line">Zabtem</div>
               <h1 data-testid="workbench-title">Zabbix 模板工作台</h1>
             </div>
           </div>
-          <Space className="header-status" size={10} breakLine={false}>
-            <Tag data-testid="api-status" theme={healthTagTheme} variant="light">{healthLabel}</Tag>
-            <Tag theme="default" variant="light">{health.service}</Tag>
-            <Tag theme="default" variant="light">Zabbix 7.0 YAML</Tag>
-          </Space>
+          <div className="header-status">
+            <span className={`status-dot status-dot-${health.status}`} aria-hidden="true" />
+            <span data-testid="api-status">{healthLabel}</span>
+            <span>{health.service}</span>
+            <span>Zabbix 7.0</span>
+          </div>
         </Header>
 
         <Content className="app-content">
