@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -22,6 +22,7 @@ import {
   type ClassifiedItem,
   type ClassifyPayload,
   type HealthPayload,
+  type MibEntry,
   type MibScanPayload,
   type SnmpProfileRequest,
   type SnmpTestPayload,
@@ -100,6 +101,8 @@ export function App() {
   const [activeStep, setActiveStep] = useState<FlowStepId>('config');
   const [templateItemDraft, setTemplateItemDraft] = useState<TemplateItemDraft | null>(null);
   const [selectedTemplateItemOids, setSelectedTemplateItemOids] = useState<string[]>([]);
+  const [selectedMibOid, setSelectedMibOid] = useState<string | null>(null);
+  const [mibSearch, setMibSearch] = useState('');
   const [selectedMibFile, setSelectedMibFile] = useState<File | null>(null);
   const [profile, setProfile] = useState({
     target: '192.168.1.10',
@@ -356,6 +359,8 @@ export function App() {
       const content = await selectedMibFile.text();
       const payload = await scanMibFile(selectedMibFile.name, content);
       setMibScan({ status: 'success', payload });
+      setMibSearch('');
+      setSelectedMibOid(payload.entries[0]?.oid ?? null);
 
       const items = payload.entries.map((entry) => ({
         oid: entry.oid,
@@ -457,6 +462,29 @@ export function App() {
   const collectReady = walk.status === 'success' || mibScan.status === 'success';
   const reviewReady = classification.status === 'success' && classification.payload.items.length > 0;
   const exportReady = templatePreview.status === 'success';
+  const filteredMibEntries = useMemo(() => {
+    if (mibScan.status !== 'success') return [];
+
+    const keyword = mibSearch.trim().toLowerCase();
+    if (!keyword) return mibScan.payload.entries;
+
+    return mibScan.payload.entries.filter((entry) =>
+      [entry.name, entry.oid, entry.syntax, entry.access, entry.description]
+        .some((value) => value.toLowerCase().includes(keyword))
+    );
+  }, [mibScan, mibSearch]);
+  const selectedMibEntry = useMemo(() => {
+    if (mibScan.status !== 'success') return null;
+    return mibScan.payload.entries.find((entry) => entry.oid === selectedMibOid) ?? mibScan.payload.entries[0] ?? null;
+  }, [mibScan, selectedMibOid]);
+  const visibleTemplateItems = classification.status === 'success'
+    ? classification.payload.items.filter((item) => selectedTemplateItemOids.includes(item.oid))
+    : [];
+
+  function toggleMibEntry(entry: MibEntry) {
+    toggleTemplateItem(entry.oid);
+    setSelectedMibOid(entry.oid);
+  }
 
   return (
     <Layout className="app-shell">
@@ -689,24 +717,105 @@ export function App() {
                       {mibScan.status === 'success' ? (
                         <div className="mib-result" data-testid="mib-scan-result">
                           <div className="mib-result-header">
-                            <strong>{mibScan.payload.moduleName}</strong>
-                            <span>{mibScan.payload.fileName}</span>
-                          </div>
-                          <div className="mib-entry-list">
-                            <div className="mib-entry-row mib-entry-head">
-                              <span>Object</span>
-                              <span>OID</span>
-                              <span>Syntax</span>
-                              <span>Access</span>
+                            <div>
+                              <strong>{mibScan.payload.moduleName}</strong>
+                              <span>{mibScan.payload.fileName}</span>
                             </div>
-                            {mibScan.payload.entries.map((entry) => (
-                              <div className="mib-entry-row" key={`${entry.name}-${entry.oid}`}>
-                                <strong>{entry.name}</strong>
-                                <code>{entry.oid}</code>
-                                <span>{entry.syntax}</span>
-                                <span>{entry.access}</span>
+                            <input
+                              data-testid="mib-tree-search"
+                              aria-label="搜索 MIB OID"
+                              placeholder="搜索名称、描述、语法"
+                              value={mibSearch}
+                              onChange={(event) => setMibSearch(event.target.value)}
+                            />
+                          </div>
+                          <div className="mib-tree-layout">
+                            <div className="mib-tree-view" data-testid="mib-tree-view">
+                              <div className="mib-tree-root">
+                                <span className="tree-toggle">▾</span>
+                                <strong>{mibScan.payload.moduleName}</strong>
+                                <small>{filteredMibEntries.length} / {mibScan.payload.entries.length}</small>
                               </div>
-                            ))}
+                              {filteredMibEntries.length === 0 ? (
+                                <div className="mib-tree-empty">没有匹配的 OID</div>
+                              ) : (
+                                filteredMibEntries.map((entry) => {
+                                  const isSelected = selectedMibEntry?.oid === entry.oid;
+                                  const isChecked = selectedTemplateItemOids.includes(entry.oid);
+
+                                  return (
+                                    <div
+                                      className={`mib-tree-node ${isSelected ? 'mib-tree-node-active' : ''}`}
+                                      data-testid={`mib-tree-node-${entry.name}`}
+                                      key={`${entry.name}-${entry.oid}`}
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={() => setSelectedMibOid(entry.oid)}
+                                      onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                          event.preventDefault();
+                                          setSelectedMibOid(entry.oid);
+                                        }
+                                      }}
+                                    >
+                                      <input
+                                        data-testid={`mib-tree-checkbox-${entry.name}`}
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        aria-label={`选择 ${entry.name}`}
+                                        onChange={() => toggleMibEntry(entry)}
+                                        onClick={(event) => event.stopPropagation()}
+                                      />
+                                      <span>
+                                        <strong>{entry.name}</strong>
+                                        <code>{entry.oid}</code>
+                                      </span>
+                                      <small>{entry.syntax}</small>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                            <aside className="oid-details-panel" data-testid="oid-details-panel">
+                              {selectedMibEntry ? (
+                                <>
+                                  <div className="oid-details-head">
+                                    <span>OID 详情</span>
+                                    <strong>{selectedMibEntry.name}</strong>
+                                    <code>{selectedMibEntry.oid}</code>
+                                  </div>
+                                  <dl className="oid-details-grid">
+                                    <div>
+                                      <dt>类型</dt>
+                                      <dd>{selectedMibEntry.syntax}</dd>
+                                    </div>
+                                    <div>
+                                      <dt>权限</dt>
+                                      <dd>{selectedMibEntry.access}</dd>
+                                    </div>
+                                    <div>
+                                      <dt>描述</dt>
+                                      <dd>{selectedMibEntry.description || '未提取到描述'}</dd>
+                                    </div>
+                                  </dl>
+                                  <div className="oid-test-guide">
+                                    <strong>三步测试</strong>
+                                    <ol>
+                                      <li>确认目标设备与 SNMP 参数</li>
+                                      <li>对当前 OID 执行 GET</li>
+                                      <li>查看返回值与响应时间</li>
+                                    </ol>
+                                    <div className="oid-test-simulated">
+                                      <span>当前为模拟测试入口</span>
+                                      <code>{profile.target} / {profile.version}</code>
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="oid-details-empty">选择左侧 OID 查看详情</div>
+                              )}
+                            </aside>
                           </div>
                         </div>
                       ) : null}
@@ -848,7 +957,10 @@ export function App() {
                     ) : null}
                     {classification.status === 'success' ? (
                       <div className="template-item-list" data-testid="oid-classify-result">
-                        {classification.payload.items.map((item) => (
+                        {visibleTemplateItems.length === 0 ? (
+                          <div className="template-empty">未选择监控项，请在 MIB 树或 walk 归类结果中勾选。</div>
+                        ) : null}
+                        {visibleTemplateItems.map((item) => (
                           <label className="template-item-row" key={item.oid}>
                             <input
                               data-testid={`template-item-${item.name}`}

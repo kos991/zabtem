@@ -155,6 +155,42 @@ describe('App workbench', () => {
     });
   });
 
+  test('filters mib scan results through a tree and shows oid details before review selection', async () => {
+    render(<App />);
+
+    const file = new File(
+      ['ACME-SWITCH-MIB DEFINITIONS ::= BEGIN\nacmeCpuLoad OBJECT-TYPE\n    ::= { enterprises 4242 1 }\nEND'],
+      'ACME-SWITCH-MIB.mib',
+      { type: 'text/plain' }
+    );
+
+    await userEvent.upload(screen.getByTestId('mib-file-input'), file);
+    await userEvent.click(screen.getByTestId('run-mib-scan'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mib-tree-view').textContent).toContain('ACME-SWITCH-MIB');
+      expect(screen.getByTestId('mib-tree-node-acmeCpuLoad').textContent).toContain('acmeCpuLoad');
+    });
+
+    await userEvent.clear(screen.getByTestId('mib-tree-search'));
+    await userEvent.type(screen.getByTestId('mib-tree-search'), 'fan');
+
+    expect(screen.getByTestId('mib-tree-view').textContent).not.toContain('acmeCpuLoad');
+    expect(screen.getByTestId('mib-tree-view').textContent).toContain('acmeFanState');
+
+    await userEvent.click(screen.getByTestId('mib-tree-node-acmeFanState'));
+
+    expect(screen.getByTestId('oid-details-panel').textContent).toContain('acmeFanState');
+    expect(screen.getByTestId('oid-details-panel').textContent).toContain('INTEGER { ok(1), fail(2) }');
+    expect(screen.getByTestId('oid-details-panel').textContent).toContain('Fan state');
+    expect(screen.getByTestId('oid-details-panel').textContent).toContain('三步测试');
+
+    await userEvent.click(screen.getByTestId('mib-tree-checkbox-acmeFanState'));
+
+    expect(screen.getByTestId('oid-classify-result').textContent).not.toContain('acmeFanState');
+    expect(screen.getByTestId('oid-classify-result').textContent).toContain('acmeCpuLoad');
+  });
+
   test('runs the simulated SNMP connection test from the workbench', async () => {
     render(<App />);
 
