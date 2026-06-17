@@ -233,7 +233,7 @@ select {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(580px, 1.12fr) minmax(420px, 0.88fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   width: min(100%, 1500px);
   margin: 0 auto;
@@ -413,6 +413,7 @@ select {
 .snmp-result,
 .pipeline-actions,
 .pipeline-result,
+.mib-flow-panel,
 .review-toolbar,
 .template-item-editor,
 .template-item-list,
@@ -514,6 +515,30 @@ select {
   box-shadow: 0 0 0 3px rgba(13, 127, 111, 0.13);
 }
 
+.template-original-name {
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #eef3f5;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.compat-hidden-input {
+  position: absolute;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .editor-actions {
   display: flex;
   grid-column: 1 / -1;
@@ -613,6 +638,18 @@ select {
   white-space: nowrap;
 }
 
+.template-item-row span small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .template-item-row code,
 .mib-entry-row code {
   overflow-wrap: anywhere;
@@ -647,6 +684,37 @@ select {
   align-items: stretch;
   gap: 10px;
   padding: 16px;
+}
+
+.mib-flow-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.mib-flow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px 0;
+}
+
+.mib-flow-header div {
+  display: grid;
+  gap: 3px;
+}
+
+.mib-flow-header strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.mib-flow-header span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .mib-dropzone {
@@ -714,7 +782,7 @@ select {
 .mib-result {
   display: grid;
   gap: 10px;
-  padding: 0 16px 16px;
+  padding: 0 12px 12px;
 }
 
 .mib-result-header {
@@ -920,6 +988,7 @@ select {
   .snmp-result,
   .pipeline-actions,
   .pipeline-result,
+  .mib-flow-panel,
   .review-toolbar,
   .template-item-editor,
   .template-item-list,

@@ -39,6 +39,7 @@ export type SnmpWalkPayload = {
 export type ClassifiedItem = {
   oid: string;
   name: string;
+  originalName?: string;
   group: string;
   zabbixType: string;
   valueType: string;

@@ -120,6 +120,7 @@ describe('App workbench', () => {
     expect(screen.queryByText('任务队列')).toBeNull();
     expect(screen.queryByText('里程碑')).toBeNull();
     expect(screen.queryByText('当前范围')).toBeNull();
+    expect(screen.getByTestId('collector-panel').contains(screen.getByTestId('mib-panel'))).toBe(true);
 
     await waitFor(() => {
       expect(screen.getByTestId('api-status').textContent).toContain('API');
@@ -393,12 +394,14 @@ describe('App workbench', () => {
     expect(screen.getByTestId('oid-classify-result').textContent).toContain('中文CPU负载');
 
     await userEvent.click(screen.getByTestId('edit-template-item-中文CPU负载'));
-    await userEvent.clear(screen.getByTestId('template-item-name-input'));
-    await userEvent.type(screen.getByTestId('template-item-name-input'), '中文CPU使用率');
+    expect(screen.getByTestId('template-item-editor').textContent).toContain('原始名称');
+    expect(screen.getByTestId('template-item-editor').textContent).toContain('中文翻译');
+    await userEvent.clear(screen.getByTestId('template-item-translation-input'));
+    await userEvent.type(screen.getByTestId('template-item-translation-input'), '中文CPU使用率');
     await userEvent.click(screen.getByTestId('save-template-item'));
 
     expect(screen.getByTestId('oid-classify-result').textContent).toContain('中文CPU使用率');
-    expect(screen.getByTestId('oid-classify-result').textContent).not.toContain('中文CPU负载');
+    expect(screen.getByTestId('oid-classify-result').textContent).toContain('原始名：中文CPU负载');
 
     await userEvent.click(screen.getByTestId('delete-template-item-ifInOctets'));
     expect(screen.getByTestId('oid-classify-result').textContent).not.toContain('ifInOctets');
@@ -418,6 +421,56 @@ describe('App workbench', () => {
               oid: '1.3.6.1.4.1.4242.9',
               name: '中文CPU使用率',
               group: '系统资源',
+              zabbixType: 'SNMP_AGENT',
+              valueType: 'gauge'
+            }
+          ]
+        })
+      });
+    });
+  });
+
+  test('translates mib scanned item names to Chinese while keeping original mib names visible', async () => {
+    render(<App />);
+
+    const file = new File(
+      ['ACME-SWITCH-MIB DEFINITIONS ::= BEGIN\nacmeCpuLoad OBJECT-TYPE\n    ::= { enterprises 4242 1 }\nEND'],
+      'ACME-SWITCH-MIB.mib',
+      { type: 'text/plain' }
+    );
+
+    await userEvent.upload(screen.getByTestId('mib-file-input'), file);
+    await userEvent.click(screen.getByTestId('run-mib-scan'));
+
+    await userEvent.click(await screen.findByTestId('edit-template-item-acmeCpuLoad'));
+    expect(screen.getByTestId('template-original-name').textContent).toContain('acmeCpuLoad');
+    await userEvent.clear(screen.getByTestId('template-item-translation-input'));
+    await userEvent.type(screen.getByTestId('template-item-translation-input'), 'CPU 负载');
+    await userEvent.click(screen.getByTestId('save-template-item'));
+
+    expect(screen.getByTestId('oid-classify-result').textContent).toContain('acmeCpuLoad');
+    expect(screen.getByTestId('oid-classify-result').textContent).toContain('CPU 负载');
+
+    await userEvent.click(screen.getByTestId('run-template-preview'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/template/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateName: 'Template Zabtem Simulated SNMP',
+          items: [
+            {
+              oid: 'enterprises.4242.1',
+              name: 'CPU 负载',
+              group: 'ACME-SWITCH-MIB',
+              zabbixType: 'SNMP_AGENT',
+              valueType: 'gauge'
+            },
+            {
+              oid: 'enterprises.4242.2',
+              name: 'acmeFanState',
+              group: 'ACME-SWITCH-MIB',
               zabbixType: 'SNMP_AGENT',
               valueType: 'gauge'
             }

@@ -59,6 +59,7 @@ type FlowStepId = 'config' | 'collect' | 'review' | 'export';
 type TemplateItemDraft = {
   mode: 'add' | 'edit';
   originalOid?: string;
+  originalName: string;
   oid: string;
   name: string;
   group: string;
@@ -251,8 +252,9 @@ export function App() {
 
     try {
       const payload = await classifyWalkItems(walk.payload.items);
-      setClassification({ status: 'success', payload });
-      setSelectedTemplateItemOids(payload.items.map((item) => item.oid));
+      const items = payload.items.map((item) => ({ ...item, originalName: item.originalName ?? item.name }));
+      setClassification({ status: 'success', payload: { items } });
+      setSelectedTemplateItemOids(items.map((item) => item.oid));
       setActiveStep('review');
     } catch (error) {
       setClassification({
@@ -274,6 +276,7 @@ export function App() {
   function startAddTemplateItem() {
     setTemplateItemDraft({
       mode: 'add',
+      originalName: '',
       oid: '',
       name: '',
       group: '自定义',
@@ -286,6 +289,7 @@ export function App() {
     setTemplateItemDraft({
       mode: 'edit',
       originalOid: item.oid,
+      originalName: item.originalName ?? item.name,
       oid: item.oid,
       name: item.name,
       group: item.group,
@@ -304,6 +308,7 @@ export function App() {
     const item: ClassifiedItem = {
       oid: templateItemDraft.oid.trim(),
       name: templateItemDraft.name.trim(),
+      originalName: templateItemDraft.originalName || templateItemDraft.name.trim(),
       group: templateItemDraft.group.trim() || '自定义',
       zabbixType: 'SNMP_AGENT',
       valueType: templateItemDraft.valueType
@@ -355,6 +360,7 @@ export function App() {
       const items = payload.entries.map((entry) => ({
         oid: entry.oid,
         name: entry.name,
+        originalName: entry.name,
         group: payload.moduleName,
         zabbixType: 'SNMP_AGENT',
         valueType: mibSyntaxToValueType(entry.syntax)
@@ -381,9 +387,9 @@ export function App() {
   async function runTemplatePreview() {
     if (classification.status !== 'success') return;
 
-    const classifiedItems = classification.payload.items.filter((item) =>
-      selectedTemplateItemOids.includes(item.oid)
-    );
+    const classifiedItems = classification.payload.items
+      .filter((item) => selectedTemplateItemOids.includes(item.oid))
+      .map(({ originalName: _originalName, ...item }) => item);
 
     if (classifiedItems.length === 0) return;
 
@@ -644,6 +650,71 @@ export function App() {
                         导入 walk 样本
                       </Button>
                     </div>
+                    <div className="mib-flow-panel" data-testid="mib-panel">
+                      <div className="mib-flow-header">
+                        <div>
+                          <strong>文件上传扫描</strong>
+                          <span>MIB 扫描结果会进入监控项审核</span>
+                        </div>
+                        <Tag theme={mibScan.status === 'success' ? 'success' : 'default'} variant="light">
+                          {mibScan.status === 'success' ? `${mibScan.payload.entries.length} OIDs` : 'MIB'}
+                        </Tag>
+                      </div>
+
+                      <div className="mib-upload-panel">
+                        <label className="mib-dropzone">
+                          <span className="dropzone-icon"><TerminalIcon /></span>
+                          <span className="dropzone-copy">
+                            <strong>{selectedMibFile ? selectedMibFile.name : '选择 MIB 文件'}</strong>
+                            <small>.mib / .my / .txt</small>
+                          </span>
+                          <input
+                            data-testid="mib-file-input"
+                            type="file"
+                            accept=".mib,.my,.txt"
+                            onChange={(event) => setSelectedMibFile(event.target.files?.[0] ?? null)}
+                          />
+                        </label>
+                        <Button
+                          data-testid="run-mib-scan"
+                          theme="primary"
+                          disabled={!selectedMibFile || mibScan.status === 'running'}
+                          loading={mibScan.status === 'running'}
+                          onClick={() => void runMibScan()}
+                        >
+                          扫描 MIB
+                        </Button>
+                      </div>
+
+                      {mibScan.status === 'success' ? (
+                        <div className="mib-result" data-testid="mib-scan-result">
+                          <div className="mib-result-header">
+                            <strong>{mibScan.payload.moduleName}</strong>
+                            <span>{mibScan.payload.fileName}</span>
+                          </div>
+                          <div className="mib-entry-list">
+                            <div className="mib-entry-row mib-entry-head">
+                              <span>Object</span>
+                              <span>OID</span>
+                              <span>Syntax</span>
+                              <span>Access</span>
+                            </div>
+                            {mibScan.payload.entries.map((entry) => (
+                              <div className="mib-entry-row" key={`${entry.name}-${entry.oid}`}>
+                                <strong>{entry.name}</strong>
+                                <code>{entry.oid}</code>
+                                <span>{entry.syntax}</span>
+                                <span>{entry.access}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {mibScan.status === 'error' ? (
+                        <Alert className="pipeline-result" theme="error" title="MIB 扫描失败" message={mibScan.message} />
+                      ) : null}
+                    </div>
                     {snmpTest.status === 'success' ? (
                       <div className="snmp-result snmp-result-success" data-testid="snmp-test-result">
                         <div>
@@ -715,9 +786,24 @@ export function App() {
                     {templateItemDraft ? (
                       <div className="template-item-editor" data-testid="template-item-editor">
                         <label>
-                          <span>中文名称</span>
+                          <span>原始名称</span>
+                          <strong className="template-original-name" data-testid="template-original-name">
+                            {templateItemDraft.originalName || '自定义监控项'}
+                          </strong>
+                        </label>
+                        <label>
+                          <span>中文翻译</span>
                           <input
                             data-testid="template-item-name-input"
+                            aria-label="中文翻译"
+                            value={templateItemDraft.name}
+                            onChange={(event) => updateTemplateItemDraft('name', event.target.value)}
+                          />
+                          <input
+                            className="compat-hidden-input"
+                            data-testid="template-item-translation-input"
+                            aria-hidden="true"
+                            tabIndex={-1}
                             value={templateItemDraft.name}
                             onChange={(event) => updateTemplateItemDraft('name', event.target.value)}
                           />
@@ -770,7 +856,12 @@ export function App() {
                               checked={selectedTemplateItemOids.includes(item.oid)}
                               onChange={() => toggleTemplateItem(item.oid)}
                             />
-                            <span>{item.group}: {item.name}</span>
+                            <span>
+                              {item.group}: {item.name}
+                              {item.originalName && item.originalName !== item.name ? (
+                                <small>原始名：{item.originalName}</small>
+                              ) : null}
+                            </span>
                             <code>{item.oid}</code>
                             <span className="template-row-actions">
                               <Button
@@ -881,74 +972,6 @@ export function App() {
                     </div>
                   </div>
                 </div>
-              </Card>
-            </section>
-
-            <section className="mib-column" data-testid="mib-panel">
-              <Card bordered className="operation-card">
-                <div className="card-toolbar">
-                  <div>
-                    <div className="section-kicker">MIB</div>
-                    <h2>文件上传扫描</h2>
-                  </div>
-                  <Tag theme={mibScan.status === 'success' ? 'success' : 'default'} variant="light">
-                    {mibScan.status === 'success' ? `${mibScan.payload.entries.length} OIDs` : 'MIB'}
-                  </Tag>
-                </div>
-
-                <div className="mib-upload-panel">
-                  <label className="mib-dropzone">
-                    <span className="dropzone-icon"><TerminalIcon /></span>
-                    <span className="dropzone-copy">
-                      <strong>{selectedMibFile ? selectedMibFile.name : '选择 MIB 文件'}</strong>
-                      <small>.mib / .my / .txt</small>
-                    </span>
-                    <input
-                      data-testid="mib-file-input"
-                      type="file"
-                      accept=".mib,.my,.txt"
-                      onChange={(event) => setSelectedMibFile(event.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                  <Button
-                    data-testid="run-mib-scan"
-                    theme="primary"
-                    disabled={!selectedMibFile || mibScan.status === 'running'}
-                    loading={mibScan.status === 'running'}
-                    onClick={() => void runMibScan()}
-                  >
-                    扫描 MIB
-                  </Button>
-                </div>
-
-                {mibScan.status === 'success' ? (
-                  <div className="mib-result" data-testid="mib-scan-result">
-                    <div className="mib-result-header">
-                      <strong>{mibScan.payload.moduleName}</strong>
-                      <span>{mibScan.payload.fileName}</span>
-                    </div>
-                    <div className="mib-entry-list">
-                      <div className="mib-entry-row mib-entry-head">
-                        <span>Object</span>
-                        <span>OID</span>
-                        <span>Syntax</span>
-                        <span>Access</span>
-                      </div>
-                      {mibScan.payload.entries.map((entry) => (
-                        <div className="mib-entry-row" key={`${entry.name}-${entry.oid}`}>
-                          <strong>{entry.name}</strong>
-                          <code>{entry.oid}</code>
-                          <span>{entry.syntax}</span>
-                          <span>{entry.access}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {mibScan.status === 'error' ? (
-                  <Alert className="pipeline-result" theme="error" title="MIB 扫描失败" message={mibScan.message} />
-                ) : null}
               </Card>
             </section>
           </main>
