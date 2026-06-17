@@ -19,6 +19,7 @@ import {
   scanMibFile,
   testSnmpProfile,
   walkSnmpProfile,
+  type ClassifiedItem,
   type ClassifyPayload,
   type HealthPayload,
   type MibScanPayload,
@@ -53,7 +54,25 @@ type RunHistoryItem = {
   itemCount: number;
 };
 
+type FlowStepId = 'config' | 'collect' | 'review' | 'export';
+
+type TemplateItemDraft = {
+  mode: 'add' | 'edit';
+  originalOid?: string;
+  oid: string;
+  name: string;
+  group: string;
+  valueType: string;
+};
+
 const { Header, Content } = Layout;
+
+const flowSteps: Array<{ id: FlowStepId; title: string; summary: string }> = [
+  { id: 'config', title: '连接配置', summary: 'SNMP 目标、版本和认证' },
+  { id: 'collect', title: '采集与MIB', summary: '导入 walk 样本、SNMP walk、MIB 扫描' },
+  { id: 'review', title: '监控项审核', summary: '新增、编辑、删除和勾选监控项' },
+  { id: 'export', title: 'YAML与历史', summary: '预览导出 Zabbix 7.0 模板' }
+];
 
 const simulatedProfile = {
   target: 'zabtem-sim-core-01',
@@ -77,6 +96,8 @@ export function App() {
   const [classification, setClassification] = useState<AsyncState<ClassifyPayload>>({ status: 'idle' });
   const [templatePreview, setTemplatePreview] = useState<AsyncState<TemplatePreviewPayload>>({ status: 'idle' });
   const [mibScan, setMibScan] = useState<AsyncState<MibScanPayload>>({ status: 'idle' });
+  const [activeStep, setActiveStep] = useState<FlowStepId>('config');
+  const [templateItemDraft, setTemplateItemDraft] = useState<TemplateItemDraft | null>(null);
   const [selectedTemplateItemOids, setSelectedTemplateItemOids] = useState<string[]>([]);
   const [selectedMibFile, setSelectedMibFile] = useState<File | null>(null);
   const [profile, setProfile] = useState({
@@ -186,6 +207,7 @@ export function App() {
     setClassification({ status: 'idle' });
     setTemplatePreview({ status: 'idle' });
     setSelectedTemplateItemOids([]);
+    setActiveStep('collect');
   }
 
   function buildSnmpProfileRequest(): SnmpProfileRequest {
@@ -231,6 +253,7 @@ export function App() {
       const payload = await classifyWalkItems(walk.payload.items);
       setClassification({ status: 'success', payload });
       setSelectedTemplateItemOids(payload.items.map((item) => item.oid));
+      setActiveStep('review');
     } catch (error) {
       setClassification({
         status: 'error',
@@ -245,6 +268,76 @@ export function App() {
         ? current.filter((itemOid) => itemOid !== oid)
         : [...current, oid]
     );
+    setTemplatePreview({ status: 'idle' });
+  }
+
+  function startAddTemplateItem() {
+    setTemplateItemDraft({
+      mode: 'add',
+      oid: '',
+      name: '',
+      group: '自定义',
+      valueType: 'gauge'
+    });
+    setActiveStep('review');
+  }
+
+  function startEditTemplateItem(item: ClassifiedItem) {
+    setTemplateItemDraft({
+      mode: 'edit',
+      originalOid: item.oid,
+      oid: item.oid,
+      name: item.name,
+      group: item.group,
+      valueType: item.valueType
+    });
+    setActiveStep('review');
+  }
+
+  function updateTemplateItemDraft(field: keyof Omit<TemplateItemDraft, 'mode' | 'originalOid'>, value: string) {
+    setTemplateItemDraft((current) => current ? { ...current, [field]: value } : current);
+  }
+
+  function saveTemplateItem() {
+    if (!templateItemDraft) return;
+
+    const item: ClassifiedItem = {
+      oid: templateItemDraft.oid.trim(),
+      name: templateItemDraft.name.trim(),
+      group: templateItemDraft.group.trim() || '自定义',
+      zabbixType: 'SNMP_AGENT',
+      valueType: templateItemDraft.valueType
+    };
+
+    if (!item.oid || !item.name) return;
+
+    const currentItems = classification.status === 'success' ? classification.payload.items : [];
+    const nextItems = templateItemDraft.mode === 'edit'
+      ? currentItems.map((currentItem) => currentItem.oid === templateItemDraft.originalOid ? item : currentItem)
+      : [...currentItems, item];
+
+    setClassification({ status: 'success', payload: { items: nextItems } });
+    setSelectedTemplateItemOids((current) => {
+      const withoutOriginal = templateItemDraft.originalOid
+        ? current.filter((oid) => oid !== templateItemDraft.originalOid)
+        : current;
+      return withoutOriginal.includes(item.oid) ? withoutOriginal : [...withoutOriginal, item.oid];
+    });
+    setTemplatePreview({ status: 'idle' });
+    setTemplateItemDraft(null);
+    setActiveStep('review');
+  }
+
+  function deleteTemplateItem(oid: string) {
+    if (classification.status !== 'success') return;
+
+    setClassification({
+      status: 'success',
+      payload: {
+        items: classification.payload.items.filter((item) => item.oid !== oid)
+      }
+    });
+    setSelectedTemplateItemOids((current) => current.filter((itemOid) => itemOid !== oid));
     setTemplatePreview({ status: 'idle' });
   }
 
@@ -269,6 +362,7 @@ export function App() {
 
       setClassification({ status: 'success', payload: { items } });
       setSelectedTemplateItemOids(items.map((item) => item.oid));
+      setActiveStep('review');
     } catch (error) {
       setMibScan({
         status: 'error',
@@ -298,6 +392,7 @@ export function App() {
     try {
       const payload = await previewTemplate(classifiedItems);
       setTemplatePreview({ status: 'success', payload });
+      setActiveStep('export');
       const entry: RunHistoryItem = {
         id: `${Date.now()}`,
         templateName: 'Template Zabtem Simulated SNMP',
@@ -337,8 +432,25 @@ export function App() {
     URL.revokeObjectURL(url);
   }
 
+  function deleteRunHistoryItem(id: string) {
+    setRunHistory((current) => {
+      const next = current.filter((item) => item.id !== id);
+      window.localStorage.setItem('zabtem.runHistory', JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function clearRunHistory() {
+    setRunHistory([]);
+    window.localStorage.setItem('zabtem.runHistory', JSON.stringify([]));
+  }
+
   const healthTagTheme = health.status === 'online' ? 'success' : health.status === 'checking' ? 'warning' : 'danger';
   const healthLabel = health.status === 'online' ? 'API 在线' : health.status === 'checking' ? '检查中' : 'API 离线';
+  const activeFlowStep = flowSteps.find((step) => step.id === activeStep) ?? flowSteps[0];
+  const collectReady = walk.status === 'success' || mibScan.status === 'success';
+  const reviewReady = classification.status === 'success' && classification.payload.items.length > 0;
+  const exportReady = templatePreview.status === 'success';
 
   return (
     <Layout className="app-shell">
@@ -359,13 +471,47 @@ export function App() {
         </Header>
 
         <Content className="app-content">
+          <nav className="flow-nav" data-testid="flow-nav" aria-label="模板生成流程">
+            {flowSteps.map((step, index) => {
+              const isActive = activeStep === step.id;
+              const isDone =
+                step.id === 'config' ||
+                (step.id === 'collect' && collectReady) ||
+                (step.id === 'review' && reviewReady) ||
+                (step.id === 'export' && exportReady);
+              return (
+                <button
+                  className={`flow-step ${isActive ? 'flow-step-active' : ''} ${isDone ? 'flow-step-done' : ''}`}
+                  data-testid={`nav-step-${step.id}`}
+                  key={step.id}
+                  type="button"
+                  onClick={() => setActiveStep(step.id)}
+                >
+                  <span className="flow-index">{index + 1}</span>
+                  <span>
+                    <strong>{step.title}</strong>
+                    <small>{step.summary}</small>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <section className="active-flow-panel" data-testid="active-flow-panel">
+            <div>
+              <span>当前步骤</span>
+              <strong>{activeFlowStep.title}</strong>
+            </div>
+            <p>{activeFlowStep.summary}</p>
+          </section>
+
           <main className="content-grid">
             <section className="primary-column" data-testid="profile-panel">
               <Card bordered className="operation-card">
                 <div className="card-toolbar">
                   <div>
-                    <div className="section-kicker">Profile</div>
-                    <h2>SNMP 目标</h2>
+                    <div className="section-kicker">步骤 1</div>
+                    <h2>连接配置</h2>
                   </div>
                   <Tag theme={healthTagTheme} variant="light">{health.message}</Tag>
                 </div>
@@ -471,7 +617,7 @@ export function App() {
                   <div className="run-panel" data-testid="collector-panel">
                     <div className="run-panel-icon"><ServerIcon /></div>
                     <div>
-                      <h3>采集控制</h3>
+                      <h3>步骤 2：采集与MIB</h3>
                       <span className="panel-caption">walk 样本可直接导入，无设备也能生成模板</span>
                     </div>
                     <Space size={10}>
@@ -557,6 +703,63 @@ export function App() {
                     {walk.status === 'error' ? (
                       <Alert className="pipeline-result" theme="error" title="SNMP walk 失败" message={walk.message} />
                     ) : null}
+                    <div className="review-toolbar">
+                      <div>
+                        <strong>步骤 3：监控项审核</strong>
+                        <span>{reviewReady ? `${classification.payload.items.length} 个候选项` : '采集或扫描后在这里审核'}</span>
+                      </div>
+                      <Button data-testid="add-template-item" variant="outline" onClick={startAddTemplateItem}>
+                        新增监控项
+                      </Button>
+                    </div>
+                    {templateItemDraft ? (
+                      <div className="template-item-editor" data-testid="template-item-editor">
+                        <label>
+                          <span>中文名称</span>
+                          <input
+                            data-testid="template-item-name-input"
+                            value={templateItemDraft.name}
+                            onChange={(event) => updateTemplateItemDraft('name', event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          <span>OID</span>
+                          <input
+                            data-testid="template-item-oid-input"
+                            value={templateItemDraft.oid}
+                            onChange={(event) => updateTemplateItemDraft('oid', event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          <span>分组</span>
+                          <input
+                            data-testid="template-item-group-input"
+                            value={templateItemDraft.group}
+                            onChange={(event) => updateTemplateItemDraft('group', event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          <span>值类型</span>
+                          <select
+                            data-testid="template-item-value-type-select"
+                            value={templateItemDraft.valueType}
+                            onChange={(event) => updateTemplateItemDraft('valueType', event.target.value)}
+                          >
+                            <option value="text">文本</option>
+                            <option value="gauge">数值</option>
+                            <option value="counter">计数器</option>
+                          </select>
+                        </label>
+                        <div className="editor-actions">
+                          <Button data-testid="save-template-item" theme="primary" onClick={saveTemplateItem}>
+                            保存监控项
+                          </Button>
+                          <Button data-testid="cancel-template-item" variant="outline" onClick={() => setTemplateItemDraft(null)}>
+                            取消
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                     {classification.status === 'success' ? (
                       <div className="template-item-list" data-testid="oid-classify-result">
                         {classification.payload.items.map((item) => (
@@ -569,6 +772,30 @@ export function App() {
                             />
                             <span>{item.group}: {item.name}</span>
                             <code>{item.oid}</code>
+                            <span className="template-row-actions">
+                              <Button
+                                data-testid={`edit-template-item-${item.name}`}
+                                size="small"
+                                variant="outline"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  startEditTemplateItem(item);
+                                }}
+                              >
+                                编辑
+                              </Button>
+                              <Button
+                                data-testid={`delete-template-item-${item.name}`}
+                                size="small"
+                                variant="outline"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  deleteTemplateItem(item.oid);
+                                }}
+                              >
+                                删除
+                              </Button>
+                            </span>
                           </label>
                         ))}
                       </div>
@@ -584,6 +811,7 @@ export function App() {
                     {templatePreview.status === 'success' ? (
                       <>
                         <div className="template-toolbar">
+                          <strong>步骤 4：YAML与历史</strong>
                           <Button
                             data-testid="copy-template-yaml"
                             variant="outline"
@@ -618,12 +846,38 @@ export function App() {
                       />
                     ) : null}
                     <div className="run-history" data-testid="run-history">
-                      {runHistory.map((item) => (
-                        <div className="history-row" key={item.id}>
-                          <strong>{item.templateName}</strong>
-                          <span>{item.target} / {item.itemCount} items</span>
-                        </div>
-                      ))}
+                      <div className="history-toolbar">
+                        <strong>运行历史</strong>
+                        <Button
+                          data-testid="clear-run-history"
+                          size="small"
+                          variant="outline"
+                          disabled={runHistory.length === 0}
+                          onClick={clearRunHistory}
+                        >
+                          清空历史
+                        </Button>
+                      </div>
+                      {runHistory.length === 0 ? (
+                        <div className="history-empty">暂无运行历史</div>
+                      ) : (
+                        runHistory.map((item) => (
+                          <div className="history-row" key={item.id}>
+                            <div>
+                              <strong>{item.templateName}</strong>
+                              <span>{item.target} / {item.itemCount} items</span>
+                            </div>
+                            <Button
+                              data-testid={`delete-history-${item.id}`}
+                              size="small"
+                              variant="outline"
+                              onClick={() => deleteRunHistoryItem(item.id)}
+                            >
+                              删除
+                            </Button>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>

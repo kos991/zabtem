@@ -113,6 +113,10 @@ describe('App workbench', () => {
     expect(screen.getByTestId('profile-panel')).toBeTruthy();
     expect(screen.getByTestId('mib-panel')).toBeTruthy();
     expect(screen.getByTestId('collector-panel')).toBeTruthy();
+    expect(screen.getByTestId('flow-nav').textContent).toContain('连接配置');
+    expect(screen.getByTestId('flow-nav').textContent).toContain('采集与MIB');
+    expect(screen.getByTestId('flow-nav').textContent).toContain('监控项审核');
+    expect(screen.getByTestId('flow-nav').textContent).toContain('YAML与历史');
     expect(screen.queryByText('任务队列')).toBeNull();
     expect(screen.queryByText('里程碑')).toBeNull();
     expect(screen.queryByText('当前范围')).toBeNull();
@@ -336,5 +340,127 @@ describe('App workbench', () => {
     await waitFor(() => {
       expect(screen.getByTestId('oid-classify-result').textContent).toContain('interfaces');
     });
+  });
+
+  test('moves through the workbench by navigation steps', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByTestId('nav-step-collect'));
+    expect(screen.getByTestId('active-flow-panel').textContent).toContain('采集与MIB');
+    expect(screen.getByTestId('active-flow-panel').textContent).toContain('导入 walk 样本');
+
+    await userEvent.type(
+      screen.getByTestId('walk-sample-input'),
+      '1.3.6.1.2.1.2.2.1.10.1 ifInOctets 42 counter'
+    );
+    await userEvent.click(screen.getByTestId('import-walk-sample'));
+    await userEvent.click(screen.getByTestId('run-oid-classify'));
+
+    await userEvent.click(screen.getByTestId('nav-step-review'));
+    expect(screen.getByTestId('active-flow-panel').textContent).toContain('监控项审核');
+    expect(screen.getByTestId('oid-classify-result').textContent).toContain('ifInOctets');
+
+    await userEvent.click(screen.getByTestId('nav-step-export'));
+    expect(screen.getByTestId('active-flow-panel').textContent).toContain('YAML与历史');
+    await userEvent.click(screen.getByTestId('run-template-preview'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-preview').textContent).toContain('zabbix_export');
+    });
+  });
+
+  test('adds edits and deletes template items with Chinese names before yaml preview', async () => {
+    render(<App />);
+
+    await userEvent.type(
+      screen.getByTestId('walk-sample-input'),
+      '1.3.6.1.2.1.2.2.1.10.1 ifInOctets 42 counter'
+    );
+    await userEvent.click(screen.getByTestId('import-walk-sample'));
+    await userEvent.click(screen.getByTestId('run-oid-classify'));
+
+    await userEvent.click(await screen.findByTestId('add-template-item'));
+    await userEvent.clear(screen.getByTestId('template-item-name-input'));
+    await userEvent.type(screen.getByTestId('template-item-name-input'), '中文CPU负载');
+    await userEvent.clear(screen.getByTestId('template-item-oid-input'));
+    await userEvent.type(screen.getByTestId('template-item-oid-input'), '1.3.6.1.4.1.4242.9');
+    await userEvent.clear(screen.getByTestId('template-item-group-input'));
+    await userEvent.type(screen.getByTestId('template-item-group-input'), '系统资源');
+    await userEvent.selectOptions(screen.getByTestId('template-item-value-type-select'), 'gauge');
+    await userEvent.click(screen.getByTestId('save-template-item'));
+
+    expect(screen.getByTestId('oid-classify-result').textContent).toContain('系统资源');
+    expect(screen.getByTestId('oid-classify-result').textContent).toContain('中文CPU负载');
+
+    await userEvent.click(screen.getByTestId('edit-template-item-中文CPU负载'));
+    await userEvent.clear(screen.getByTestId('template-item-name-input'));
+    await userEvent.type(screen.getByTestId('template-item-name-input'), '中文CPU使用率');
+    await userEvent.click(screen.getByTestId('save-template-item'));
+
+    expect(screen.getByTestId('oid-classify-result').textContent).toContain('中文CPU使用率');
+    expect(screen.getByTestId('oid-classify-result').textContent).not.toContain('中文CPU负载');
+
+    await userEvent.click(screen.getByTestId('delete-template-item-ifInOctets'));
+    expect(screen.getByTestId('oid-classify-result').textContent).not.toContain('ifInOctets');
+
+    await userEvent.click(screen.getByTestId('run-template-preview'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/template/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateName: 'Template Zabtem Simulated SNMP',
+          items: [
+            { oid: '1.3.6.1.2.1.1.1.0', name: 'sysDescr', group: 'system', zabbixType: 'SNMP_AGENT', valueType: 'text' },
+            { oid: '1.3.6.1.2.1.25.2.3.1.6.1', name: 'hrStorageUsed', group: 'storage', zabbixType: 'SNMP_AGENT', valueType: 'gauge' },
+            {
+              oid: '1.3.6.1.4.1.4242.9',
+              name: '中文CPU使用率',
+              group: '系统资源',
+              zabbixType: 'SNMP_AGENT',
+              valueType: 'gauge'
+            }
+          ]
+        })
+      });
+    });
+  });
+
+  test('deletes individual run history entries and clears saved history', async () => {
+    window.localStorage.setItem(
+      'zabtem.runHistory',
+      JSON.stringify([
+        {
+          id: 'history-1',
+          templateName: 'Template Zabtem Simulated SNMP',
+          target: '192.168.1.10',
+          createdAt: '2026-06-17T01:00:00.000Z',
+          itemCount: 4
+        },
+        {
+          id: 'history-2',
+          templateName: 'Template Zabtem Storage',
+          target: '192.168.1.11',
+          createdAt: '2026-06-17T02:00:00.000Z',
+          itemCount: 2
+        }
+      ])
+    );
+
+    render(<App />);
+
+    expect(screen.getByTestId('run-history').textContent).toContain('Template Zabtem Simulated SNMP');
+    expect(screen.getByTestId('run-history').textContent).toContain('Template Zabtem Storage');
+
+    await userEvent.click(screen.getByTestId('delete-history-history-1'));
+
+    expect(screen.getByTestId('run-history').textContent).not.toContain('Template Zabtem Simulated SNMP');
+    expect(window.localStorage.getItem('zabtem.runHistory')).not.toContain('history-1');
+
+    await userEvent.click(screen.getByTestId('clear-run-history'));
+
+    expect(screen.getByTestId('run-history').textContent).toContain('暂无运行历史');
+    expect(window.localStorage.getItem('zabtem.runHistory')).toBe('[]');
   });
 });
